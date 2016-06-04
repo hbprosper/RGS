@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 //  File:    RGS.cc
 //  Purpose: Implement the Random Grid Search algorithm. This code
 //           can be called from Python and Root.
@@ -15,7 +15,8 @@
 //           06-Apr-2015 HBP - add functions to save either to a text file or
 //                       to an ntuple.
 //           28-May-2016 HBP - minor update
-//-----------------------------------------------------------------------------
+//           02-Jun-2016 HBP - add option overall weighting of events
+//----------------------------------------------------------------------------
 #include <stdio.h>
 #include <cmath>
 #include <string>
@@ -43,11 +44,11 @@ static int DEBUG = getenv("DBRGS") > (char*)0 ? atoi(getenv("DBRGS")) : 0;
 // return RGS version number
 string rgsversion() 
 {
-  return string("RGS v2.3");
+  return string("RGS v2.4");
 }
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 // A bunch of simple string-based utilities
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 void error(string message)
 {
   cerr << "** ERROR ** " << message << endl;
@@ -322,7 +323,8 @@ RGS::RGS(vstring& cutdatafilenames, int start, int numrows,
   : _status(0),
     _treename(treename),
     _weightname(weightname),
-    _selection(selection)
+    _selection(selection),
+    _weight(vector<double>())
 {
   // Definitions:
   //  Cut-point
@@ -345,7 +347,8 @@ RGS::RGS(string cutdatafilename, int start, int numrows,
   : _status(0),
     _treename(treename),
     _weightname(weightname),
-    _selection(selection)
+    _selection(selection),
+    _weight(vector<double>())    
 {
   vstring cutdatafilenames(1, cutdatafilename);
   _init(cutdatafilenames, start, numrows, _treename, _selection);
@@ -370,7 +373,8 @@ void
 RGS::add(string searchfilename, 
          int    start, 
          int    numrows,
-	 string resultname)
+	 string resultname,
+	 double weight)
 {
   // Cache name of file (stripped of path and extension)
   _searchname.push_back(nameonly(searchfilename));
@@ -380,7 +384,10 @@ RGS::add(string searchfilename,
   // to which we append the ordinal value of the search file, starting
   // at zero.
   _resultname.push_back(resultname);
-    
+
+  // Cache weight/file
+  _weight.push_back(weight);
+  
   // Create an empty buffer of vector<vector<double> >
   // that serves as a cache of the data to which cuts
   // are to be applied
@@ -424,7 +431,8 @@ void
 RGS::add(vector<string>& searchfilenames, 
          int start, 
 	 int numrows,
-	 string resultname)
+	 string resultname,
+	 double weight)
 {
   // See description in add(...) method above.
   _searchname.push_back(nameonly(searchfilenames[0]));
@@ -439,8 +447,12 @@ RGS::add(vector<string>& searchfilenames,
   cout << "\nRGS: Reading data from file(s):" << endl;
   for(unsigned int ifile=0; ifile < searchfilenames.size(); ifile++)
     {
+      // Cache weight/file
+      _weight.push_back(weight);
+      
       header.clear();
-      if ( ! slurpTable(searchfilenames[ifile], header, sdata, start, numrows, 
+      if ( ! slurpTable(searchfilenames[ifile], header,
+			sdata, start, numrows, 
 			_treename, 
 			_selection) )
           error("RGS: unable to read file " + searchfilenames[ifile]);
@@ -498,8 +510,9 @@ void RGS::run(string varfilename, // variables file name
 
   // cutvar will contain the first field (the variable name)
   // cutdir will contain the remaining fields (either the cut-direction
-  // or if cutvar is the keyword "\ladder", it will be the number of cut-points
-  // that comprise the ladder, that is, the number of cut-points to be ORed.
+  // or if cutvar is the keyword "\ladder", it will be the number of
+  // cut-points that comprise the ladder, that is, the number of
+  // cut-points to be ORed.
   //
   // Note: a ladder cut can comprise any combination of uni-directional cuts
 
@@ -801,7 +814,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 #endif
 	  // I'm alive printout every nprint cuts
           if ( (nprint > 0) &&
-	       ((cutpoint % nprint == 0) || (size_t)cutpoint==(_cutdata.size()-1)))
+	       ((cutpoint % nprint == 0) ||
+		(size_t)cutpoint==(_cutdata.size()-1)))
             cout << "\t\tapplying cut " << cutpoint << endl;
           
           // Loop over rows of file to be processed
@@ -911,8 +925,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
           
               // Keep a running sum of events that pass all cuts
               // of current cut-point
-
-              float weight = 1.0;
+	      
+	      double weight = _weight[file];
               if ( useEventWeight ) weight = weight * sdata[row][weightindex];
               
               if ( cutpoint == 0 ) _totals[file] += weight;

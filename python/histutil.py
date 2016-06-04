@@ -916,7 +916,7 @@ class Ntuple:
     # "self" is Python's equivalent of the "this" pointer in C++
     # self points to the memory allocated for the object
 
-    def __init__(self, filename, treename, nrows=None):
+    def __init__(self, filename, treename, firstrow=0, nrows=None):
 
         # cache inputs
         self.status = 0
@@ -1036,8 +1036,6 @@ class Ntuple:
         for ind, var in enumerate(self.vars):
             self.varmap[var] = ind
 
-        # initialize row number
-        self.row = 0
         nentries = self.entries
         if self.nrows != None:
             self.entries = min(self.nrows, nentries) 
@@ -1102,7 +1100,8 @@ class Ntuple:
             tree.SetBranchAddress(name, AddressOf(self.buffer[jj], name))
 
         self.status = 0
-        self.row = 0
+        # initialize row number
+        self.row = firstrow
 
     # destructor
     def __del__(self):

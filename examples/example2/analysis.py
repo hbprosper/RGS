@@ -109,11 +109,11 @@ def main():
     hist.SetMinimum(0)
 
     laddercut = LadderCut(xmin, xmax, ymin, ymax)
-    for row, cut in enumerate(ntuple):
-        fb = cut.fraction_b   #  background fraction
-        fs = cut.fraction_s   #  signal fraction
-        b  = cut.count_b      #  background count
-        s  = cut.count_s      #  signal count        
+    for row, cuts in enumerate(ntuple):
+        fb = cuts.fraction_b   #  background fraction
+        fs = cuts.fraction_s   #  signal fraction
+        b  = cuts.count_b      #  background count
+        s  = cuts.count_s      #  signal count        
         hist.Fill(fb, fs)
 
         # Compute measure of significance
@@ -127,9 +127,10 @@ def main():
                 Z = Z*sqrt(absZ)/absZ                    
  
         # add ladder cut to ladder cut object
-        R2 = cut.R2
-        MR = cut.MR
-        laddercut.add(Z, R2, MR)
+        # cut directions ">" for both variables
+        xcut_dir = 1
+        ycut_dir = 1 
+        laddercut.add(Z, cuts.MR, cuts.R2, xcut_dir, ycut_dir)
         
     print "\n\t=== best ladder cut"
     signif, outerhull, cutpoints = laddercut(0)

@@ -1,22 +1,16 @@
 #ifndef RGS_H
 #define RGS_H
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 //  File:    RGS.h
 //  Purpose: Implement the Random Grid Search algorithm. This code
-//           can be called from Python and Root. It can be compiled as follows,
-//           if desired:
-//           In ROOT
-//               .L RGS.cc+    in ROOT
-//           In Python
-//               from ROOT import *
-//               gROOT.ProcessLine(".L RGS.cc+")
+//           can be called from Python and Root.
 //
 // Purpose: Declaration of RGS classes
 // Created: 18-Aug-2000 Harrison B. Prosper, Chandigarh, India
 // Updated  18-Jan-2015 HBP - add selection argument - Bari, Italy
 //          06-Apr-2015 HBP - add functions to save either to a text file or
 //                      to an ntuple.
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 #ifdef __WITH_CINT__
 #include "TObject.h"
 #endif
@@ -98,13 +92,15 @@ public:
   void  add(std::string searchfilename,
             int start=0, 
             int numrows=-1,
-	    std::string resultname="");
+	    std::string resultname="",
+	    double weight=1.0);
   
   /// Add one or more data files to be searched.
   void  add(std::vector<std::string>& searchfilename,
             int start=0, 
             int numrows=-1,
-	    std::string resultname="");
+	    std::string resultname="",
+	    double weight=1.0);
 
   /// Run the RGS algorithm for specified cut variables and cut directions.
   void  run(vstring&  cutvar,  // Variables defining cuts 
@@ -162,7 +158,8 @@ private:
   std::string _treename;
   std::string _weightname;
   std::string _selection;
-
+  vdouble     _weight;
+  
   std::vector<std::vector<int> > _cutpointindex;
 
   void _init(vstring& cutdatafilename, int start=0, int numrows=0, 

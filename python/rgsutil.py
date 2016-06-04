@@ -1,13 +1,11 @@
 #-----------------------------------------------------------------------------
-# File: LadderCut
-# Description: Determine outer hulls of 2D ladder cuts, assuming
-#              cut-points are defined by cut = (x > xcut) AND (y > ycut).
-#              A ladder cut is an OR of cut-points. 
+# File: rgsutil
+# Description: A collection of RGS utilities.
 #
 # Created: 18-Jan-2015 Harrison B. Prosper and Sezen Sekmen
 # Udpated: 21-Oct-2015 HBP & SS - allow flexibility of plotting the outer
 #                      hull of any ladder cut
-#          28-May-2016 HBP - rename LadderCut
+#          28-May-2016 HBP - rename LadderPlot OuterHull
 #-----------------------------------------------------------------------------
 import os, sys, re
 from array import array
@@ -15,7 +13,32 @@ from string import split, strip, atoi, atof, replace, joinfields
 from math import *
 from ROOT import TPolyLine, kRed, kBlack
 #-----------------------------------------------------------------------------
-class LadderCut:
+def error(message):
+    print "** %s" % message
+    exit(0)
+
+# Return the name of a file with the extension and path stripped away.
+def nameonly(s):
+    import posixpath
+    return posixpath.splitext(posixpath.split(s)[1])[0]
+
+def count(filename, treename):
+    tfile = TFile(filename)
+    if not tfile.IsOpen():
+        sys.exit('** cannot open file %s' % filename)
+    t = tfile.Get(treename)
+    if not t:
+        sys.exit('** cannot get tree %s' % treename)
+    n = t.GetEntries()
+    return n    
+# ----------------------------------------------------------------------------
+def getCutDirections(varfilename):
+    if not os.path.exists(varfilename):
+        error("unable to open variables file %s" % varfilename)
+    records = map(split, filter(lambda x: x[0]!='#', open(varfilename)))
+    return records
+# ----------------------------------------------------------------------------    
+class OuterHull:
     def __init__(self, xmin, xmax, ymin, ymax,
                  color=kRed,
                  hullcolor=kBlack,
@@ -27,7 +50,7 @@ class LadderCut:
         self.hullwidth=hullwidth
         self.plots = []
         
-    def add(self, significance, y, x):
+    def add(self, significance, x, y, xdir=1, ydir=1):
         # sort all cut-points in this ladder cut
         # in increasing y value)
         cutpoints = [None]*len(y)
@@ -41,11 +64,18 @@ class LadderCut:
         for ii in xrange(1, len(cutpoints)):
             y0, x0 = outerhull[-1]
             y1, x1 = cutpoints[ii]
-            # if the current cut-point has an x value lower than the x value of
-            # the previous cut-point then this point is on the outer hull.
-            if x1 < x0:
-                outerhull.append(cutpoints[ii])
-                
+            # if the x-cut direction is > and the current cut-point
+            # has a lower x value than that of the previous cut-point
+            # then this point is on the outer hull.
+            #
+            # if the x-cut direction is < the condition is reversed
+            if xdir > 0:
+                if x1 < x0:
+                    outerhull.append(cutpoints[ii])
+            else:
+                if x1 > x0:
+                    outerhull.append(cutpoints[ii])
+                                        
         # place significance in position 1, so that outer hulls can be
         # sorted according to the user-defined significance measure
         self.cuts.append((significance, outerhull, cutpoints))    

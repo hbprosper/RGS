@@ -1,4 +1,4 @@
-export PATH=`pwd`/bin:$PATH
-export PYTHONPATH=`pwd`/python:$PYTHONPATH
-export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PYTHONPATH=$DIR/python:$PYTHONPATH
+export LD_LIBRARY_PATH=$DIR/lib:$LD_LIBRARY_PATH
 
