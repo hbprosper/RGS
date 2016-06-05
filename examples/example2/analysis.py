@@ -8,14 +8,10 @@
 # ---------------------------------------------------------------------
 import os, sys, re
 from string import *
+from rgsutil import *
 from histutil import *
 from time import sleep
-from LadderCut import LadderCut
 from ROOT import *
-# ---------------------------------------------------------------------
-def error(message):
-    print "** %s" % message
-    exit(0)
 # ---------------------------------------------------------------------
 def main():
     print "="*80
@@ -24,7 +20,7 @@ def main():
 
     setStyle()
 
-    msize = 0.30
+    msize = 0.15
     xbins = 40
     xmin  = 0.0
     xmax  =4000.0
@@ -88,6 +84,13 @@ def main():
     hs.Draw('p')
     hb.Draw('p same')
     cmass.Update()
+
+    # initialize an object to determine the outer hull of the
+    # ladder cuts, that is, the minimum set of cuts that define
+    # the ladder cuts
+    varfilename = 'example2.cuts'
+    cutdirs     = getCutDirections(varfilename)[1:-1]
+    outerHull   = OuterHull(xmin, xmax, ymin, ymax, cutdirs)
     
     # -------------------------------------------------------------
     #  Plot results of RGS
@@ -108,12 +111,11 @@ def main():
                    color=color)
     hist.SetMinimum(0)
 
-    laddercut = LadderCut(xmin, xmax, ymin, ymax)
     for row, cuts in enumerate(ntuple):
-        fb = cuts.fraction_b   #  background fraction
-        fs = cuts.fraction_s   #  signal fraction
-        b  = cuts.count_b      #  background count
-        s  = cuts.count_s      #  signal count        
+        fb = cuts('fraction_b')   #  background fraction
+        fs = cuts('fraction_s')   #  signal fraction
+        b  = cuts('count_b')      #  background count
+        s  = cuts('count_s')      #  signal count        
         hist.Fill(fb, fs)
 
         # Compute measure of significance
@@ -126,22 +128,26 @@ def main():
             if absZ != 0:
                 Z = Z*sqrt(absZ)/absZ                    
  
-        # add ladder cut to ladder cut object
-        # cut directions ">" for both variables
-        xcut_dir = 1
-        ycut_dir = 1 
-        laddercut.add(Z, cuts.MR, cuts.R2, xcut_dir, ycut_dir)
+        # add ladder cut to outer hull object
+        outerHull.add(Z, cuts('MR'), cuts('R2'))
         
     print "\n\t=== best ladder cut"
-    signif, outerhull, cutpoints = laddercut(0)
+    xname, xdir = cutdirs[0]
+    yname, ydir = cutdirs[1]
+    Z, outerhull, cutpoints = outerHull(0)
+    OR = ''
     for ii, cutpoint in enumerate(outerhull):
-        print "\t%4d\t(R2 > %8.4f) AND (MR > %8.1f)" % (ii,
-                                                        cutpoint[0],
-                                                        cutpoint[1])
+        xcut = cutpoint[0]
+        ycut = cutpoint[1]
+        print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
+                                                            xname, xdir, xcut,
+                                                            yname, ydir, ycut)
+        OR = 'OR'
+
     cmass.cd(2)    	
-    laddercut.draw()
+    outerHull.draw()
     cmass.Update()
-    cmass.SaveAs('.png')
+
 
     # -------------------------------------------------------------
     # roc plot
@@ -151,6 +157,9 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
+
+    # saveplots
+    cmass.SaveAs('.png')    
     croc.SaveAs(".png")    
     sleep(5)
 # ---------------------------------------------------------------------

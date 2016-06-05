@@ -11,8 +11,11 @@ import os, sys, re
 from array import array
 from string import split, strip, atoi, atof, replace, joinfields
 from math import *
-from ROOT import TPolyLine, kRed, kBlack
+from ROOT import *
 #-----------------------------------------------------------------------------
+def getCWD():
+    return split(os.environ['PWD'],'/')[-1]
+
 def error(message):
     print "** %s" % message
     exit(0)
@@ -22,7 +25,7 @@ def nameonly(s):
     import posixpath
     return posixpath.splitext(posixpath.split(s)[1])[0]
 
-def count(filename, treename):
+def getEntries(filename, treename):
     tfile = TFile(filename)
     if not tfile.IsOpen():
         sys.exit('** cannot open file %s' % filename)
@@ -35,75 +38,107 @@ def count(filename, treename):
 def getCutDirections(varfilename):
     if not os.path.exists(varfilename):
         error("unable to open variables file %s" % varfilename)
-    records = map(split, filter(lambda x: x[0]!='#', open(varfilename)))
+    records = map(split,
+                  filter(lambda x: x[0] != '#',
+                        filter(lambda x: x != '',
+                               map(strip, open(varfilename)))))       
     return records
 # ----------------------------------------------------------------------------    
 class OuterHull:
     def __init__(self, xmin, xmax, ymin, ymax,
+                 cutdirs=[('x', '>'), ('y', '>')],
                  color=kRed,
                  hullcolor=kBlack,
                  hullwidth=2):
         self.cuts = []
+        self.cutdirs = cutdirs
         self.xmin, self.xmax, self.ymin, self.ymax = xmin, xmax, ymin, ymax
         self.color=color
         self.hullcolor=hullcolor
         self.hullwidth=hullwidth
         self.plots = []
         
-    def add(self, significance, x, y, xdir=1, ydir=1):
+    def add(self, significance, x, y):
+        cutdirs = self.cutdirs
         # sort all cut-points in this ladder cut
-        # in increasing y value)
+        # in increasing or decreasing order of y value
+        # depending on the cut directions
         cutpoints = [None]*len(y)
         for ii in xrange(len(y)):
-            cutpoints[ii] = (y[ii], x[ii])
+            cutpoints[ii] = [y[ii], x[ii]]
         cutpoints.sort()
-
+        
+        xname, xdir = cutdirs[0]
+        yname, ydir = cutdirs[1]
+        if (xdir == '>' and ydir == '<') or (xdir == '<' and ydir == '<'):
+            cutpoints.reverse()
+        
         # find outer hull by picking cut-points such that
-        # x value decreases monotonically
-        outerhull = [cutpoints[0]]  # start with cut-point with lowest y value 
+        # x value decreases or increases monotonically, depending on
+        # the cut directions.
+        outerhull = [cutpoints[0]]
         for ii in xrange(1, len(cutpoints)):
-            y0, x0 = outerhull[-1]
-            y1, x1 = cutpoints[ii]
-            # if the x-cut direction is > and the current cut-point
-            # has a lower x value than that of the previous cut-point
-            # then this point is on the outer hull.
-            #
-            # if the x-cut direction is < the condition is reversed
-            if xdir > 0:
-                if x1 < x0:
-                    outerhull.append(cutpoints[ii])
+            y0, x0 = outerhull[-1]  # previous point
+            y1, x1 = cutpoints[ii]  # current point
+            if   (xdir == '>' and ydir == '>') or (xdir == '>' and ydir == '<'):
+                if x1 < x0: outerhull.append(cutpoints[ii])
             else:
-                if x1 > x0:
-                    outerhull.append(cutpoints[ii])
+                if x1 > x0: outerhull.append(cutpoints[ii])
                                         
         # place significance in position 1, so that outer hulls can be
         # sorted according to the user-defined significance measure
-        self.cuts.append((significance, outerhull, cutpoints))    
-
+        self.cuts.append((significance, outerhull, cutpoints))
+        self.sort = True
+        
     # return outer hull of specified ladder cut
     def __call__(self, point=0):
         cuts = self.cuts
         # check for sensible point index
         if point < 0: return None
         if point > len(cuts)-1: return None
-        # order outer hulls according to user-defined significances
-        cuts.sort()
-        cuts.reverse()
-        return cuts[point]
+        if self.sort:
+            self.sort = False
+            # order outer hulls according to user-defined significances        
+            self.cuts.sort()
+            self.cuts.reverse()
+        Z, outerhull, cutpoints = cuts[point]    
+        for i, (y, x) in enumerate(outerhull):
+            outerhull[i] = (x, y)
+        return (Z, outerhull, cutpoints)
 
-    def plot(self, cutpoint, xmax, ymax, color):
+    def plot(self, cutpoint, xmin, xmax, ymin, ymax, color, plotit=True):
+        xname, xdir = self.cutdirs[0]
+        yname, ydir = self.cutdirs[1]
         x = array('d')
         y = array('d')
         yy, xx = cutpoint
-        y.append(ymax); x.append(xx)
-        y.append(yy);   x.append(xx)
-        y.append(yy);   x.append(xmax)
-        poly = TPolyLine(len(x), x, y)
-        poly.SetLineWidth(1)
-        poly.SetLineColor(color)
-        return poly
+        xx = min(xx, xmax); xx = max(xx, xmin)
+        yy = min(yy, ymax); yy = max(yy, ymin)
         
-    def draw(self, point=0, hullcolor=kBlack, plotall=False):
+        if xdir == '>':
+            x.append(xmax); x.append(xx); x.append(xx)
+            y.append(yy);   y.append(yy)
+            if ydir == '>':
+                y.append(ymax)
+            else:
+                y.append(ymin)
+        else:
+            x.append(xmin); x.append(xx); x.append(xx)
+            y.append(yy);   y.append(yy)
+            if ydir == '>':
+                y.append(ymax)
+            else:
+                y.append(ymin)
+
+        if plotit:
+            poly = TPolyLine(len(x), x, y)
+            poly.SetLineWidth(1)
+            poly.SetLineColor(color)
+            return poly
+        else:
+            return (x, y)
+        
+    def draw(self, point=0, option='l same', hullcolor=kBlack, plotall=False):
         cuts = self.__call__(point)
         if cuts == None: return
         significance, outerhull, cutpoints = cuts
@@ -120,23 +155,39 @@ class OuterHull:
         if plotall:
             for cutpoint in cutpoints:
                 plots.append(plot(cutpoint,
-                                  xmax, ymax,
+                                  self.xmin, self.xmax,
+                                  self.ymin, self.ymax,
                                   color))
-                plots[-1].Draw('l same')
+                plots[-1].Draw(option)
 
         # plot outer hull of current ladder
-        for ii, cutpoint in enumerate(outerhull):
-            if ii == 0:
-                ymax, xx = outerhull[ii+1]
-            elif ii < len(outerhull)-1:
-                yy, xmax = outerhull[ii-1]                    
-                ymax, xx = outerhull[ii+1]
-            else:
-                yy, xmax = outerhull[ii-1]
-                ymax = self.ymax
-
-            plots.append(plot(cutpoint,
-                              xmax, ymax,
-                              self.hullcolor))
-            plots[-1].SetLineWidth(self.hullwidth)
-            plots[-1].Draw('l same')                
+        x = array('d')
+        y = array('d')
+        xx, yy = plot(outerhull[0],
+                      self.xmin, self.xmax,
+                      self.ymin, self.ymax,
+                      color,
+                      False)
+        x.append(xx[0]); y.append(yy[0])
+        x.append(xx[1]); y.append(yy[1])
+        x.append(xx[2]); y.append(yy[2])
+        for cutpoint in outerhull[1:]:
+            xx, yy = plot(cutpoint,
+                          self.xmin, self.xmax,
+                          self.ymin, self.ymax,
+                          color,
+                          False)
+            # the y-value of the previous point should be
+            # equal to the y-value of the current point.
+            # note: we skip the first point of the triplet
+            # because it is a doppelganger of the previous point.
+            y[-1] = yy[0]
+            x.append(xx[1]); y.append(yy[1])
+            x.append(xx[2]); y.append(yy[2]) 
+            
+        hull = TPolyLine(len(x), x, y)
+        hull.SetLineWidth(2)
+        hull.SetLineColor(hullcolor)
+        hull.Draw(option)           
+        plots.append(hull)
+#---------------------------------------------------------------------------

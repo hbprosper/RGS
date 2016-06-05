@@ -8,14 +8,10 @@
 # ---------------------------------------------------------------------
 import os, sys, re
 from string import *
+from rgsutil import *
 from histutil import *
 from time import sleep
-from LadderCut import LadderCut
 from ROOT import *
-# ---------------------------------------------------------------------
-def error(message):
-    print "** %s" % message
-    exit(0)
 # ---------------------------------------------------------------------
 def main():
     print "="*80
@@ -88,6 +84,14 @@ def main():
     hs.Draw('p')
     hb.Draw('p same')
     cmass.Update()
+
+
+    # initialize an object to determine the outer hull of the
+    # ladder cuts, that is, the minimum set of cuts that define
+    # the ladder cuts
+    varfilename = 'example2.cuts'
+    cutdirs     = getCutDirections(varfilename)[1:-1]
+    outerHull   = OuterHull(xmin, xmax, ymin, ymax, cutdirs)
     
     # -------------------------------------------------------------
     #  Plot results of RGS
@@ -113,7 +117,6 @@ def main():
                    color=color)
     hist.SetMinimum(0)
 
-    laddercut = LadderCut(xmin, xmax, ymin, ymax)
     print "\tfilling ROC plot..."	
     for row, cuts in enumerate(table):
         fb = cuts("fraction_b")  #  background fraction
@@ -133,25 +136,25 @@ def main():
             if absZ != 0:
                 Z = Z*sqrt(absZ)/absZ                    
  
-        # add ladder cut to ladder plot
-        R2 = cuts('R2')
-        MR = cuts('MR')
-        laddercut.add(Z, R2, MR)
-
-    print "\n\t=== best ladder cut"
-    signif, outerhull, cutpoints = laddercut(0)
-    delim = ''
-    for ii, cutpoint in enumerate(outerhull):
-        print "\t%4s\t(R2 > %8.4f) AND (MR > %8.1f)" % (delim,
-                                                        cutpoint[0],
-                                                        cutpoint[1])
-        delim = 'OR'
+        # add ladder cut to object that determines their outer hull
+        outerHull.add(Z, cuts('MR'), cuts('R2'))
         
-    print "\n\t=== plot ladder cut"
+    print "\n\t=== best ladder cut"
+    xname, xdir = cutdirs[0]
+    yname, ydir = cutdirs[1]
+    Z, outerhull, cutpoints = outerHull(0)
+    OR = ''
+    for ii, cutpoint in enumerate(outerhull):
+        xcut = cutpoint[0]
+        ycut = cutpoint[1]
+        print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
+                                                            xname, xdir, xcut,
+                                                            yname, ydir, ycut)
+        OR = 'OR'
+
     cmass.cd(2)    	
-    laddercut.draw()
+    outerHull.draw()
     cmass.Update()
-    cmass.SaveAs('.png')
 
     # -------------------------------------------------------------
     # roc plot
@@ -161,6 +164,9 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
+
+    # saveplots
+    cmass.SaveAs('.png')    
     croc.SaveAs(".png")    
     sleep(5)
 # ---------------------------------------------------------------------

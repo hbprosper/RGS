@@ -16,18 +16,14 @@
 # ---------------------------------------------------------------------
 import os, sys, re
 from string import *
+from rgsutil import *
 from histutil import *
 from time import sleep
-from array import array
 from ROOT import *
-# ---------------------------------------------------------------------
-def error(message):
-    print "** %s" % message
-    exit(0)
 # ---------------------------------------------------------------------
 def plotData():
 
-    msize = 0.30 # marker size
+    msize = 0.15 # marker size
     
     xbins =   50
     xmin  =  0.0
@@ -117,6 +113,8 @@ def main():
     # python directory).
     setStyle()
 
+    cmass, hs, hb = plotData()
+    
     # Create a 2-D histogram for ROC plot
     msize = 0.30 # marker size for points in ROC plot
     xbins = 50   # number of bins in x (background)
@@ -200,11 +198,9 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
-    croc.SaveAs(".png")
+
 
     print "\t=== plot cuts ==="
-
-    cmass, hs, hb = plotData()
     
     xbins= hs.GetNbinsX()
     xmin = hs.GetXaxis().GetBinLowEdge(1)
@@ -219,6 +215,9 @@ def main():
                 bestcuts['deltaetajj'][1], bestcuts['massjj'][1])
     cmass.cd()
     hcut.Draw('same')
+
+    # save plots
+    croc.SaveAs(".png")    
     cmass.SaveAs('.png')
          
     sleep(5)

@@ -15,19 +15,15 @@
 # ---------------------------------------------------------------------
 import os, sys, re
 from string import *
+from rgsutil import *
 from histutil import *
 from time import sleep
-from array import array
 from ROOT import *
-# ---------------------------------------------------------------------
-def error(message):
-    print "** %s" % message
-    exit(0)
 # ---------------------------------------------------------------------
 def plotData():
 
-    msize = 0.30 # marker size
-    
+    msize = 0.15 # marker size
+
     xbins =   50
     xmin  =  0.0
     xmax  = 10.0
@@ -35,7 +31,7 @@ def plotData():
     ybins =    50
     ymin  =   0.0
     ymax  =5000.0    
-
+    
     cmass = TCanvas("fig_example1_VBF_ggF", "VBF/ggF",
                     10, 10, 500, 500)    
     
@@ -52,7 +48,7 @@ def plotData():
     
     bntuple = Ntuple('../data/ggf13TeV_test.root', 'Analysis')
     btotal  = 0.0
-    total  = 0
+    total   = 0
     for ii, event in enumerate(bntuple):
         btotal += event.weight
         total  += 1
@@ -117,6 +113,9 @@ def main():
     # python directory).
     setStyle()
 
+    cmass, hs, hb = plotData()
+
+    
     # Create a 2-D histogram for ROC plot
     msize = 0.30  # marker size for points in ROC plot
     
@@ -176,7 +175,7 @@ def main():
     bestcuts = {}
     for name, count in variables:    
         if name[0:5] in ['count', 'fract', 'cutpo']: continue
-        var = ntuple.get(name)
+        var = ntuple(name)
         bestcuts[name] = var
         print "\t%s" % name
         for ii in xrange(len(var)):
@@ -186,7 +185,7 @@ def main():
     print "Yields and relative efficiencies"
     for name, count in variables:        
         if not (name[0:5] in ['count', 'fract']): continue
-        var = ntuple.get(name)
+        var = ntuple(name)
         print "\t%-30s %10.3f" % (name, var)
         if name[0:5] == "fract":
             print
@@ -200,12 +199,10 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
-    croc.SaveAs(".png")
+
 
 
     print "\t=== plot cuts ==="
-
-    cmass, hs, hb = plotData()
     
     xbins= hs.GetNbinsX()
     xmin = hs.GetXaxis().GetBinLowEdge(1)
@@ -220,6 +217,8 @@ def main():
                 bestcuts['deltaetajj'][1], bestcuts['massjj'][1])
     cmass.cd()
     hcut.Draw('same')
+
+    croc.SaveAs(".png")    
     cmass.SaveAs('.png')
     
     sleep(5)

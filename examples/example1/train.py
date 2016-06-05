@@ -6,16 +6,9 @@
 #  Created:     10-Jan-2015 Harrison B. Prosper and Sezen Sekmen
 # -----------------------------------------------------------------------------
 import os, sys, re
+from rgsutil import *
 from string import *
 from ROOT import *
-# -----------------------------------------------------------------------------
-def error(message):
-    print "** %s" % message
-    exit(0)
-# Return the name of a file with the extension and path stripped away.
-def nameonly(s):
-    import posixpath
-    return posixpath.splitext(posixpath.split(s)[1])[0]    
 # -----------------------------------------------------------------------------
 def main():
     print "="*80
