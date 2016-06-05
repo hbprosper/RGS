@@ -1,6 +1,6 @@
 # RGS
 ## Introduction
-The Random Grid Search (RGS) algorithm is a simple, but surprisingly effective, way to find rectangular cuts. Developed by yours truly, Chip Stewart, Pushpa Bhat and generalized by Sezen Sekmen to include *box* and *ladder* cuts. A box cut is the AND of two-sided cuts, for example (x1 < x < x2) AND (y1 < y < y2), while a ladder cut is the OR of two or more one-sided cuts.
+The Random Grid Search (RGS) algorithm is a simple, but surprisingly effective, way to find rectangular cuts. Developed by Harrison Prosper, Chip Stewart, Pushpa Bhat and generalized by Sezen Sekmen to include *box* and *ladder* cuts. A box cut is the AND of two-sided cuts, for example (x1 < x < x2) AND (y1 < y < y2), while a ladder cut is the OR of two or more one-sided cuts.
 
 ## Installation
 This package depends on the package [Root](https://root.cern.ch/downloading-root) from CERN and a small package [histutil](https://github.com/hbprosper/histutil) built on top of Root. To install Root follow the instructions at the [Root](https://root.cern.ch/downloading-root) website. The histutil package may be installed in any convenient place using 
