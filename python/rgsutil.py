@@ -57,6 +57,7 @@ class OuterHull:
         self.hullcolor=hullcolor
         self.hullwidth=hullwidth
         self.plots = []
+        self.sort  = True
         
     def add(self, significance, x, y):
         cutdirs = self.cutdirs
@@ -92,16 +93,16 @@ class OuterHull:
         
     # return outer hull of specified ladder cut
     def __call__(self, point=0):
-        cuts = self.cuts
         # check for sensible point index
         if point < 0: return None
-        if point > len(cuts)-1: return None
+        if point > len(self.cuts)-1: return None
+        # first time around, sort cuts
         if self.sort:
             self.sort = False
             # order outer hulls according to user-defined significances        
             self.cuts.sort()
             self.cuts.reverse()
-        Z, outerhull, cutpoints = cuts[point]    
+        Z, outerhull, cutpoints = self.cuts[point]    
         for i, (y, x) in enumerate(outerhull):
             outerhull[i] = (x, y)
         return (Z, outerhull, cutpoints)
@@ -138,18 +139,16 @@ class OuterHull:
         else:
             return (x, y)
         
-    def draw(self, point=0, option='l same', hullcolor=kBlack, plotall=False):
-        cuts = self.__call__(point)
-        if cuts == None: return
-        significance, outerhull, cutpoints = cuts
-            
+    def draw(self, laddercuts,
+             option='l same', hullcolor=kBlack, plotall=False):
+        if laddercuts == None: return
+        
+        significance, outerhull, cutpoints = laddercuts
+
         xmin, xmax, ymin, ymax = self.xmin, self.xmax, self.ymin, self.ymax
         color = self.color
         plot  = self.plot
         plots = self.plots
-        if hullcolor != None:
-            self.hullcolor = hullcolor
-        hullcolor = self.hullcolor
 
         # plot cut-points of current ladder, if requested
         if plotall:
@@ -171,6 +170,7 @@ class OuterHull:
         x.append(xx[0]); y.append(yy[0])
         x.append(xx[1]); y.append(yy[1])
         x.append(xx[2]); y.append(yy[2])
+
         for cutpoint in outerhull[1:]:
             xx, yy = plot(cutpoint,
                           self.xmin, self.xmax,
@@ -184,7 +184,7 @@ class OuterHull:
             y[-1] = yy[0]
             x.append(xx[1]); y.append(yy[1])
             x.append(xx[2]); y.append(yy[2]) 
-            
+
         hull = TPolyLine(len(x), x, y)
         hull.SetLineWidth(2)
         hull.SetLineColor(hullcolor)

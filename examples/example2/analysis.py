@@ -126,29 +126,41 @@ def main():
             Z = 2*((s+b)*log((s+b)/b)-s)
             absZ = abs(Z)
             if absZ != 0:
-                Z = Z*sqrt(absZ)/absZ                    
+                Z = Z*sqrt(absZ)/absZ
+            else:
+                Z = 0.0
  
         # add ladder cut to outer hull object
         outerHull.add(Z, cuts('MR'), cuts('R2'))
         
-    print "\n\t=== best ladder cut"
+    print "\n\t=== plot outer hulls"
     xname, xdir = cutdirs[0]
     yname, ydir = cutdirs[1]
-    Z, outerhull, cutpoints = outerHull(0)
-    OR = ''
-    for ii, cutpoint in enumerate(outerhull):
-        xcut = cutpoint[0]
-        ycut = cutpoint[1]
-        print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
-                                                            xname, xdir, xcut,
-                                                            yname, ydir, ycut)
-        OR = 'OR'
 
-    cmass.cd(2)    	
-    outerHull.draw()
-    cmass.Update()
+    cmass.cd(2)
+    for ii, color in [(0,    kBlack),
+                      (1000, kBlue),
+                      (1500, kOrange+2)]:
 
-
+        # draw outer full of specified ladder cut
+        cut = outerHull(ii)
+        outerHull.draw(cut, hullcolor=color, plotall=True)
+        cmass.Update()
+        
+        # print out the cuts defining the outer hull        
+        print '\ncut number %d' % ii
+        Z, outerhull, cutpoints = cut
+        OR = ''
+        for ii, cutpoint in enumerate(outerhull):
+            xcut = cutpoint[0]
+            ycut = cutpoint[1]
+            print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
+                                                                xname,
+                                                                xdir, xcut,
+                                                                yname,
+                                                                ydir, ycut)
+            OR = 'OR'
+        
     # -------------------------------------------------------------
     # roc plot
     # -------------------------------------------------------------
