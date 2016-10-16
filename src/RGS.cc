@@ -27,10 +27,10 @@
 #include <set>
 #include <map>
 
-#include "RGS.h"
 #include "TRandom3.h"
 #include "TLeaf.h"
 #include "TTreeFormula.h"
+#include "RGS.h"
 
 using namespace std;
 
@@ -189,9 +189,9 @@ bool slurpTable(string filename,
       TTree* tree = (TTree*)rfile.Get(treename.c_str());
       if ( !tree )
 	error("slurpTable - unable to get tree "+treename);
-
+      
       tree->ResetBranchAddresses();
-
+            
       // Optionally, allow for event selection when using trees
       TTreeFormula* keep = 0;
       bool selectEvent = selection != "";
@@ -210,25 +210,23 @@ bool slurpTable(string filename,
       for(int i=0; i < nbranches; i++)
 	{
 	  // Assume simple ntuple with leaf name = branch name
-	  TBranch* branch = (TBranch*)((*branches)[i]);
+	  TBranch* branch = (TBranch*)(branches->At(i));
 	  header.push_back(branch->GetName());
 	  TLeaf* leaf = branch->GetLeaf(branch->GetName());
-	  vtype[i] = leaf->GetTypeName()[0];
 
+	  vtype[i] = leaf->GetTypeName()[0];
 	  if      ( vtype[i] == 'I' )
 	    tree->SetBranchAddress(header.back().c_str(), &ibuffer[i]);
 	  else if ( vtype[i] == 'F' )
 	    tree->SetBranchAddress(header.back().c_str(), &fbuffer[i]);
 	  else if ( vtype[i] == 'D' )
 	    tree->SetBranchAddress(header.back().c_str(), &dbuffer[i]);
-	  //cout << "\t" << vtype[i] << "\t" << header.back() << endl;	  
 	}
 
       // Loop "count" entries, starting at start. 
       for(int row=start; row < maxrows; row++)
 	{
 	  tree->GetEntry(row);
-
 	  // Apply selection if given
 	  if ( selectEvent )
 	    {

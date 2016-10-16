@@ -1,40 +1,39 @@
 #!/usr/bin/env python
 # ---------------------------------------------------------------------
 #  File:        analysisFromTxt.py
-#  Description: Analyze the results of RGS ladder cuts and find the
+#  Description: Analyze the results of RGS staircase cuts and find the
 #               best cuts.
 # ---------------------------------------------------------------------
 #  Created:     10-Jan-2015 Harrison B. Prosper and Sezen Sekmen
+#               25-Sep-2016 HBP - use Table instead of Ntuple
 # ---------------------------------------------------------------------
 import os, sys, re
 from string import *
 from rgsutil import *
-from histutil import *
 from time import sleep
 from ROOT import *
 # ---------------------------------------------------------------------
 def main():
     print "="*80
-    print "\t=== Example 2 - Analyze results of Ladder Cuts ==="    
+    print "\t=== Example 2 - Analyze results of Staircase Cuts ==="    
     print "="*80
 
     setStyle()
 
-    msize = 0.30
-    xbins = 40
+    msize = 0.15
+    xbins = 50
     xmin  = 0.0
-    xmax  =4000.0
+    xmax  =2000.0
 
-    ybins = 40
+    ybins = 50
     ymin  = 0.0
-    ymax  = 1.0    
+    ymax  = 0.5    
 
-    cmass = TCanvas("fig_T2tt_TTJets", "", 10, 10, 700, 350)    
+    cmass = TCanvas("fig_example2", "", 10, 10, 1000, 500)    
     # divide canvas canvas along x-axis
-    cmass.Divide(2,1)
+    cmass.Divide(2, 1)
     
     # -- background
-
     hb = mkhist2("hb",
                  "M_{R} (GeV)",
                  "R^{2}",
@@ -43,9 +42,9 @@ def main():
                  color=kMagenta+1)
     hb.Sumw2()
     hb.SetMarkerSize(msize)
-    bntuple = Ntuple('../data/TTJets.root', 'Analysis')
-    for ii, event in enumerate(bntuple):
-        hb.Fill(event.MR, event.R2)
+    btable = Table('../data/TTJets.txt')
+    for ii, event in enumerate(btable):
+        hb.Fill(event('MR'), event('R2'))
         if ii % 100 == 0:
             cmass.cd(2)
             hb.Draw('p')
@@ -60,16 +59,17 @@ def main():
                  color=kCyan+1)
     hs.Sumw2()
     hs.SetMarkerSize(msize)
-    sntuple = Ntuple('../data/T2tt_mStop_850_mLSP_100.root',
-                     'Analysis')
-    for ii, event in enumerate(sntuple):
-        hs.Fill(event.MR, event.R2)        
+    stable = Table('../data/T2tt_mStop_850_mLSP_100.txt')
+
+    for ii, event in enumerate(stable):
+        hs.Fill(event('MR'), event('R2'))        
         if ii % 100 == 0:
             cmass.cd(2)
             hs.Draw('p')
             cmass.Update()
 
-    # compute D = p(x|S)/[p(x|S)+p(x|B)]
+    # approximate D = p(x|S)/[p(x|S)+p(x|B)]
+    # using histograms
     hD = hs.Clone('hD'); hD.Scale(1.0/hD.Integral())
     hB = hb.Clone('hB'); hB.Scale(1.0/hB.Integral())
     
@@ -96,7 +96,6 @@ def main():
     # -------------------------------------------------------------
     #  Plot results of RGS
     # -------------------------------------------------------------
-
     resultsfilename = "example2.txt"
     print "\n\topen RGS file: %s"  % resultsfilename
     table = Table(resultsfilename)
@@ -117,7 +116,10 @@ def main():
                    color=color)
     hist.SetMinimum(0)
 
-    print "\tfilling ROC plot..."	
+    print "\tfilling ROC plot..."
+    bestZ  = 0.0
+    bestfs = 0.0
+    bestfb = 0.0	
     for row, cuts in enumerate(table):
         fb = cuts("fraction_b")  #  background fraction
         fs = cuts("fraction_s")  #  signal fraction 
@@ -135,34 +137,63 @@ def main():
             absZ = abs(Z)
             if absZ != 0:
                 Z = Z*sqrt(absZ)/absZ                    
- 
+        if Z > bestZ:
+            bestZ  = Z
+            bestfs = fs
+            bestfb = fb
+            
         # add ladder cut to object that determines their outer hull
         outerHull.add(Z, cuts('MR'), cuts('R2'))
         
-    print "\n\t=== best ladder cut"
+    print "\n\t=== plot outer hulls"
     xname, xdir = cutdirs[0]
     yname, ydir = cutdirs[1]
-    Z, outerhull, cutpoints = outerHull(0)
-    OR = ''
-    for ii, cutpoint in enumerate(outerhull):
-        xcut = cutpoint[0]
-        ycut = cutpoint[1]
-        print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
-                                                            xname, xdir, xcut,
-                                                            yname, ydir, ycut)
-        OR = 'OR'
 
-    cmass.cd(2)    	
-    outerHull.draw()
-    cmass.Update()
+    for ii, color, lstyle in [(0,    kRed+2,   1),
+                              (1000, kBlue,    7),
+                              (1500, kGreen+3, 9)]:
 
+        # draw outer full of specified ladder cut
+        cut = outerHull(ii)
+
+        cmass.cd(1)
+        outerHull.draw(cut, hullcolor=color, lstyle=lstyle,
+                       lwidth=3,
+                       plotall=False)
+        cmass.cd(2)
+        outerHull.draw(cut, hullcolor=color, lstyle=lstyle,
+                       lwidth=3,
+                       plotall=ii==0)    # plot cut-points for first ladder cut
+        cmass.Update()
+        
+        # print out the cuts defining the outer hull        
+        Z, outerhull, cutpoints = cut
+        print '\ncut number %d\t%10.1f' % (ii, Z)
+        OR = ''
+        for ii, cutpoint in enumerate(outerhull):
+            xcut = cutpoint[0]
+            ycut = cutpoint[1]
+            print "\t%4s\t(%s %s %8.3f)\tAND\t(%s %s %8.3f)" % (OR,
+                                                                xname,
+                                                                xdir, xcut,
+                                                                yname,
+                                                                ydir, ycut)
+            OR = 'OR'
+        
     # -------------------------------------------------------------
     # roc plot
     # -------------------------------------------------------------
-    print "\n\t=== plot ROC ==="	
-    croc = TCanvas("fig_example2_ROC", "RGS", 516, 10, 500, 500)
+    print "\n\t=== plot ROC ==="
+    xp = array('d'); xp.append(bestfb)
+    yp = array('d'); yp.append(bestfs)
+    gp = TGraph(1, xp, yp)
+    gp.SetMarkerSize(1.4)
+    gp.SetMarkerColor(kRed+1)
+    
+    croc = TCanvas("fig_example2_ROC", "RGS", 700, 500, 500, 500)
     croc.cd()
     hist.Draw()
+    gp.Draw('p same')
     croc.Update()
 
     # saveplots

@@ -16,7 +16,6 @@
 import os, sys, re
 from string import *
 from rgsutil import *
-from histutil import *
 from time import sleep
 from ROOT import *
 # ---------------------------------------------------------------------
@@ -32,7 +31,7 @@ def plotData():
     ymin  =   0.0
     ymax  =5000.0    
     
-    cmass = TCanvas("fig_example1_VBF_ggF", "VBF/ggF",
+    cmass = TCanvas("fig_example1", "VBF/ggF",
                     10, 10, 500, 500)    
     
     # -- background
@@ -202,7 +201,7 @@ def main():
 
 
 
-    print "\t=== plot cuts ==="
+    print "\t=== box cut ==="
     
     xbins= hs.GetNbinsX()
     xmin = hs.GetXaxis().GetBinLowEdge(1)

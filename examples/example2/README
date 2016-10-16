@@ -1,6 +1,6 @@
 Description
 -----------
-Discriminate between T2tt and TTJets using ladder cuts.
+Discriminate between T2tt and TTJets using staircase cuts.
 
 (A) Run RGS
     cd examples/example2
