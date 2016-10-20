@@ -483,12 +483,12 @@ void RGS::run(string varfilename, // variables file name
   // A cut-point is and AND of cuts
   //
   // Cut directions/types
-  //    >
-  //    <
-  //    >|
-  //    <|
-  //    <>
-  //    ==
+  //    >    0 
+  //    <    1
+  //    >|   2
+  //    <|   3
+  //    ==   4
+  //    <>   5
   //
   // Syntax of variables file:
   //
@@ -600,7 +600,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
   // Decode cuts
   // ----------------------------------------------------------
   if ( DEBUG > 0 )
-    cout << endl << "\tDECODE CUTS" << endl;
+    cout << endl << "DECODE CUTS" << endl;
 
   // Default number of simultaneous cuts-points to consider.
   // However, by the end of the following loop, maxpoints will
@@ -673,6 +673,13 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
       _cutcode.push_back(code);
       _cutpointcount.push_back(pointcount);
 
+      if ( DEBUG > 0 )
+	{
+	  cout << "\tcutvar[" << i << "]: " << cutvar[i] << endl;
+	  cout << "\t\tcode:       " << _cutcode.back() << endl;
+	  cout << "\t\tpointcount: " << _cutpointcount.back() << endl;
+	}
+      
       // Get column index of current cut variable
       if ( cutvar[i].substr(0, 2) == "\\l" ||
            cutvar[i].substr(0, 2) == "\\L" )
@@ -701,8 +708,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
         }
     } 
   if ( DEBUG > 0 )
-    cout << "\tEND DECODE CUTS" << endl << endl;
-
+    cout << "END DECODE CUTS" << endl << endl;
+  
   // -------------------------------------------------------------------------
   // Here we augment each cut-point so that we can handle both box and
   // ladder cuts. For each cut-point, randomly select maxpoints-1 more 
@@ -710,7 +717,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
   // -------------------------------------------------------------------------
 
   if ( DEBUG > 1 )
-    cout << "\tSAMPLE CUT-POINTS" << endl << endl;
+    cout << "SAMPLE CUT-POINTS" << endl << endl;
 
   TRandom3 ran;
 
@@ -756,7 +763,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
     }
  
   if ( DEBUG > 1 )
-    cout << "\tEND SAMPLE CUT-POINTS" << endl << endl;
+    cout << "END SAMPLE CUT-POINTS" << endl << endl;
 
   // -------------------------------------------------------------------------
   // Loop over files to which cuts are to be applied
@@ -1171,7 +1178,7 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
 {
   cout << "\nRGS: Saving RGS results to text file: " << endl;
   cout << "\t" << resultfilename << endl;
-  cout << "\tVariable \tNumber of entries" << endl;
+  cout << "\tVariable \tsize\tcut" << endl;
 
   ofstream fout(resultfilename.c_str());
 
@@ -1190,9 +1197,9 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
   int cut = 0;
   while ( cut < maxcuts )
     {
-      int jcut =_index[cut];
+      int jcut = _index[cut];
       string var = _var[jcut];
-
+      
       switch (_cutcode[cut])
         {
         case GT:
@@ -1204,7 +1211,11 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
 	    varname.push_back(var);
 	    varsize.push_back(1);
 	    varcut.push_back(cut);
-            cout << "\t" << var << "\t" << varsize.back() << endl;	    
+            cout << "\t" << varname.back()
+		 << "\t" << varsize.back()
+		 << "\t" << varcut.back()
+		 << "\t<== onesided"
+		 << endl;	    
           }
           break;
 
@@ -1213,9 +1224,14 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
 	    varname.push_back(var);
 	    varsize.push_back(2);
 	    varcut.push_back(cut);
-	    //varcutindex;
-            cout << "\t" << var << "\t" << varsize.back() << endl;
+            cout << "\t" << varname.back()
+		 << "\t" << varsize.back()
+		 << "\t" << varcut.back()
+		 << "\t<== box"	      
+		 << endl;	    	    
           }
+	  break;
+	  
         case LADDER:
           {
             // Get number of cut points to use for current ladder
@@ -1233,7 +1249,11 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
 		varname.push_back(var);
 		varsize.push_back(pointcount);
 		varcut.push_back(cut);
-		cout << "\t" << var << "\t" << varsize.back() << endl;		
+		cout << "\t" << varname.back()
+		     << "\t" << varsize.back()
+		     << "\t" << varcut.back()
+		     << "\t<== staircase"	      
+		     << endl;		
 
                 // IMPORTANT: Remember to increment cut number
                 cut++;
@@ -1436,6 +1456,8 @@ RGS::_saveToNtupleFile(string resultfilename, double lumi)
             tree->Branch(var.c_str(), &cutvalue[cut][0], fmt);
             cout << "\t" << fmt << endl;
           }
+	  break;
+	  
         case LADDER:
           {
             // Get number of cut points to use for current ladder
