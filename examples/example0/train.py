@@ -19,6 +19,7 @@ def main():
     # Load the RGS shared library and check that the various input files
     # exist.
     # ---------------------------------------------------------------------
+    gSystem.AddDynamicPath('%s/lib' % os.environ['RGS_PATH'])
     if gSystem.Load("libRGS") < 0:
         error("unable to load libRGS")
 

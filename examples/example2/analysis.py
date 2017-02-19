@@ -47,9 +47,10 @@ def main():
         hb.Fill(event('MR'), event('R2'))
         if ii % 100 == 0:
             cmass.cd(2)
-            hb.Draw('p')
+            hb.Draw('box')
             cmass.Update()
-    
+            gSystem.ProcessEvents()
+            
     # -- signal
     hs = mkhist2("hs",
                  "M_{R} (GeV)",
@@ -65,8 +66,9 @@ def main():
         hs.Fill(event('MR'), event('R2'))        
         if ii % 100 == 0:
             cmass.cd(2)
-            hs.Draw('p')
+            hs.Draw('box')
             cmass.Update()
+            gSystem.ProcessEvents()
 
     # approximate D = p(x|S)/[p(x|S)+p(x|B)]
     # using histograms
@@ -81,10 +83,11 @@ def main():
     hD.Draw('cont')
     
     cmass.cd(2)
-    hs.Draw('p')
-    hb.Draw('p same')
+    hb.Draw('box')
+    hs.Draw('box same')
     cmass.Update()
-
+    gSystem.ProcessEvents()
+    
     # initialize an object to determine the outer hull of the
     # ladder cuts, that is, the minimum set of cuts that comprise
     # the ladder cut
@@ -155,6 +158,7 @@ def main():
                        lwidth=3,
                        plotall=ii==0)        
         cmass.Update()
+        gSystem.ProcessEvents()
         
         # print out the cuts defining the outer hull        
         print '\ncut number %d' % ii
@@ -178,7 +182,8 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
-
+    gSystem.ProcessEvents()
+    
     # saveplots
     cmass.SaveAs('.png')    
     croc.SaveAs(".png")    

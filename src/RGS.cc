@@ -16,6 +16,7 @@
 //                       to an ntuple.
 //           28-May-2016 HBP - minor update
 //           02-Jun-2016 HBP - add option overall weighting of events
+//           19-Feb-2017 HBP - add histogram with counts (from 30,000 feet!)
 //----------------------------------------------------------------------------
 #include <stdio.h>
 #include <cmath>
@@ -30,6 +31,7 @@
 #include "TRandom3.h"
 #include "TLeaf.h"
 #include "TTreeFormula.h"
+#include "TH1F.h"
 #include "RGS.h"
 
 using namespace std;
@@ -420,7 +422,7 @@ RGS::add(string searchfilename,
         }
     }
 
-  cout << "\tSearch data will be denoted as " << resultname << " in the RGS results file." << endl;
+  cout << "\tSearch data will be identified with " << resultname << " in the RGS results file." << endl;
 
 }
 
@@ -592,6 +594,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
   // Initialize buffers for total number of events and
   // number of (possibly weighted) events passing cuts
   _totals.resize(_searchdata.size(),0.0);
+  _errors.resize(_searchdata.size(),0.0);
   _counts.resize(_searchdata.size(),vdouble());
   for (int i = 0; i < (int)_counts.size(); i++)
     _counts[i].resize(_cutdata.size(), 0.0);
@@ -934,7 +937,11 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	      double weight = _weight[file];
               if ( useEventWeight ) weight = weight * sdata[row][weightindex];
               
-              if ( cutpoint == 0 ) _totals[file] += weight;
+              if ( cutpoint == 0 )
+		{
+		  _totals[file] += weight;
+		  _errors[file] += weight*weight;
+		}
           
               if ( passed ) _counts[file][cutpoint] += weight;
 
@@ -1164,17 +1171,17 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
 }
 
 void
-RGS::save(string resultfilename, double lumi)
+RGS::save(string resultfilename)
 {
   bool saveToNtuple = inString(resultfilename, ".root");
   if ( saveToNtuple )
-    _saveToNtupleFile(resultfilename, lumi);
+    _saveToNtupleFile(resultfilename);
   else
-    _saveToTextFile(resultfilename, lumi);
+    _saveToTextFile(resultfilename);
 }
 
 void
-RGS::_saveToTextFile(string resultfilename, double lumi)
+RGS::_saveToTextFile(string resultfilename)
 {
   cout << "\nRGS: Saving RGS results to text file: " << endl;
   cout << "\t" << resultfilename << endl;
@@ -1385,7 +1392,7 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
       // write counts and fractions
       for(unsigned int i=0; i < _counts.size(); i++)
 	{
-	  float passcount = _counts[i][cutpoint] * lumi;
+	  float passcount = _counts[i][cutpoint];
 	  float fraction  = passcount/total(i);
 	  fout << passcount << "\t" << fraction << "\t"; 
 	}
@@ -1403,7 +1410,7 @@ RGS::_saveToTextFile(string resultfilename, double lumi)
 
 
 void
-RGS::_saveToNtupleFile(string resultfilename, double lumi)
+RGS::_saveToNtupleFile(string resultfilename)
 {
   cout << endl << "RGS: Saving RGS results to ROOT file: " << endl;
   cout << "\t" << resultfilename << endl;
@@ -1584,7 +1591,7 @@ RGS::_saveToNtupleFile(string resultfilename, double lumi)
       // (See Branch definitions above)
       for(unsigned int i=0; i < counts.size(); i++)
 	{
-	  counts[i]    =_counts[i][cutpoint] * lumi;
+	  counts[i]    =_counts[i][cutpoint];
 	  fractions[i] = counts[i]/total(i);
 	}
 
@@ -1596,6 +1603,15 @@ RGS::_saveToNtupleFile(string resultfilename, double lumi)
       tree->Fill();
     }
   file->cd();
+
+  // Fill a histogram with totals
+  TH1F* htotal = new TH1F("total", "total",
+			  _totals.size(), 0, _totals.size());
+  for(size_t c=0; c < _totals.size(); c++)
+    {
+      htotal->SetBinContent(c+1, total(c));
+      htotal->SetBinError(c+1, etotal(c));
+    }
   //tree->AutoSave("SaveSelf");
   file->Write("", TObject::kOverwrite);
 }
@@ -1610,6 +1626,18 @@ RGS::total(int index)
     }
   return _totals[index];
 }
+
+double
+RGS::etotal(int index) 
+{
+  if ( index < 0 || index > (int)_errors.size()-1 )
+    {
+      _status = rBADINDEX;
+      return 0;
+    }
+  return sqrt(_errors[index]);
+}
+
 
 double
 RGS::count(int index, int cutindex) 

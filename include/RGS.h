@@ -10,6 +10,8 @@
 // Updated  18-Jan-2015 HBP - add selection argument - Bari, Italy
 //          06-Apr-2015 HBP - add functions to save either to a text file or
 //                      to an ntuple.
+//          19-Fev-2017 HBP - remove lumi argument from save and add
+//                            error associated with total
 //----------------------------------------------------------------------------
 #ifdef __WITH_CINT__
 #include "TObject.h"
@@ -114,6 +116,9 @@ public:
   /// Return the total count for the data file identified by dataindex.
   double    total(int dataindex);
 
+  /// Return error in total count for the data file identified by dataindex.
+  double    etotal(int dataindex);
+  
   /// Return the count for the given data file and the given cut-point.
   double    count(int dataindex, int cutindex);
 
@@ -136,7 +141,7 @@ public:
   vdouble&  data(int dataindex, int event);
 
   /// Save counts to a text or root file
-  void     save(std::string resultfilename, double lumi=1);
+  void     save(std::string resultfilename);
   
 private:
   int         _status;
@@ -154,7 +159,8 @@ private:
   vdouble     _totals;
   vvdouble    _counts;
   vstring _resultname;
-
+  vdouble     _errors;
+  
   std::string _treename;
   std::string _weightname;
   std::string _selection;
@@ -167,8 +173,8 @@ private:
 	     std::string selection="");
   bool _boxcut(float x, int cutpoint, int jcut);
   bool _laddercut(vdouble& datarow, int cutpoint, int& cut);
-  void _saveToTextFile(std::string resultfilename, double lumi=1);
-  void _saveToNtupleFile(std::string resultfilename, double lumi=1);
+  void _saveToTextFile(std::string resultfilename);
+  void _saveToNtupleFile(std::string resultfilename);
 
 #ifdef __WITH_CINT__
   public:

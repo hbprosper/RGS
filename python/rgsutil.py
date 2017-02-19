@@ -461,7 +461,7 @@ class Ntuple:
         self.entries = self.chain.GetEntries()
         self.tree = self.chain
         tree = self.tree
-
+            
         if tree == None:
             print "** problem accessing Tree - "\
               "perhaps the name %s is wrong?" % treename
@@ -603,6 +603,18 @@ class Ntuple:
     def numEntries(self):
         return int(self.entries)
 
+    def totals(self):
+        self.file = self.tree.GetCurrentFile()
+        htotal = self.file.Get('total')
+        if htotal:
+            t = []
+            for ii in xrange(htotal.GetNbinsX()):
+                t.append((htotal.GetBinContent(ii+1),
+                          htotal.GetBinError(ii+1)))
+            return t
+        else:
+            return []
+    
     def __len__(self):
         return int(self.entries)
     

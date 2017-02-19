@@ -79,11 +79,13 @@ def plotData():
             cmass.cd()
             hs.Draw('p')
             cmass.Update()
-
+            gSystem.ProcessEvents()
+            
     cmass.cd()
     hs.Draw('p')
     hb.Draw('p same')
     cmass.Update()
+    gSystem.ProcessEvents()    
     return (cmass, hs, hb)
 # ---------------------------------------------------------------------
 def main():
@@ -197,7 +199,7 @@ def main():
     croc.cd()
     hist.Draw()
     croc.Update()
-
+    gSystem.ProcessEvents()    
 
 
     print "\t=== plot one-sided cuts ==="
@@ -223,6 +225,8 @@ def main():
 
     cmass.cd()
     hcut.Draw('same')
+    cmass.Update()
+    gSystem.ProcessEvents()    
     croc.SaveAs(".png")    
     cmass.SaveAs('.png')
     
