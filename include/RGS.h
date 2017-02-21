@@ -95,14 +95,16 @@ public:
             int start=0, 
             int numrows=-1,
 	    std::string resultname="",
-	    double weight=1.0);
+	    double weight=1.0,
+	    std::string selection="");
   
   /// Add one or more data files to be searched.
   void  add(std::vector<std::string>& searchfilename,
             int start=0, 
             int numrows=-1,
 	    std::string resultname="",
-	    double weight=1.0);
+	    double weight=1.0,
+	    std::string selection="");
 
   /// Run the RGS algorithm for specified cut variables and cut directions.
   void  run(vstring&  cutvar,  // Variables defining cuts 

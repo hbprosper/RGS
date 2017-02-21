@@ -374,7 +374,8 @@ RGS::add(string searchfilename,
          int    start, 
          int    numrows,
 	 string resultname,
-	 double weight)
+	 double weight,
+	 string selection)
 {
   // Cache name of file (stripped of path and extension)
   _searchname.push_back(nameonly(searchfilename));
@@ -405,7 +406,7 @@ RGS::add(string searchfilename,
   cout << "\nRGS: Reading search data from file:" << endl;
   if ( ! slurpTable(searchfilename, header, sdata, start, numrows, 
 		    _treename, 
-		    _selection) )
+		    selection) )
     error("RGS: unable to read file " + searchfilename);
 
   // The data may be weighted. Find the column corresponding
@@ -432,7 +433,8 @@ RGS::add(vector<string>& searchfilenames,
          int start, 
 	 int numrows,
 	 string resultname,
-	 double weight)
+	 double weight,
+	 string selection)
 {
   // See description in add(...) method above.
   _searchname.push_back(nameonly(searchfilenames[0]));
@@ -454,7 +456,7 @@ RGS::add(vector<string>& searchfilenames,
       if ( ! slurpTable(searchfilenames[ifile], header,
 			sdata, start, numrows, 
 			_treename, 
-			_selection) )
+			selection) )
           error("RGS: unable to read file " + searchfilenames[ifile]);
     }
 
