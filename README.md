@@ -1,6 +1,6 @@
 # RGS
 ## Introduction
-The Random Grid Search (RGS) algorithm is a simple, but surprisingly effective, way to find rectangular cuts. Developed by Harrison Prosper, Chip Stewart, Pushpa Bhat and generalized by Sezen Sekmen to include *box* and *ladder* cuts. A box cut is the AND of two-sided cuts, for example (x1 < x < x2) AND (y1 < y < y2), while a ladder cut is the OR of two or more one-sided cuts.
+The Random Grid Search (RGS) algorithm is a simple, but surprisingly effective, way to find rectangular cuts. Developed by Harrison Prosper, Chip Stewart, Pushpa Bhat and generalized by Sezen Sekmen to include *two-sided* and *staircase* cuts. A two-sided cut is a cut of the for (x1 < x < x2), while a staircase cut is the OR of two or more one-sided cuts.
 
 ## Installation
 This package depends on the package [Root](https://root.cern.ch/downloading-root) from CERN and a small package [histutil](https://github.com/hbprosper/histutil) built on top of Root. To install Root follow the instructions at the [Root](https://root.cern.ch/downloading-root) website. The histutil package may be installed in any convenient place using 
@@ -21,17 +21,18 @@ Both setups need be done only once per terminal session.
 
 ## Examples
 There are two examples in the *examples* directory of RGS
-### example1
-This example illustrates a search for the best box cut. To run it do
+### Higgs
+This example illustrates three RGS optimizations, HO1, HO2, and HO3, designed isolate Higgs vector boson fusion events. Each optimization can be run by executing the _train.py_ and _analysis.py_ programs. For example,
+HO1 can be run as follows
 ```
-cd examples/example1
-python train.py
+cd examples/Higgs/HO1
+./train.py
 ```
-which will run RGS and store the results in a file called *example1.root* and also in a simple format in the text file *example1.txt*. To analyze the results of RGS do
+which will run RGS and store the results in a file called *HO1.root*. To analyze the results of RGS do
 ```
-python analysis.py
+./analysis.py
 ```
-which will read the results from *example1.root*. The other program reads from the text file instead.
+which will read the results from *HO1.root*. 
 
-### example2
-This example illustrates a search for the best ladder cut. Switch to the *example2* directory and proceed as in example1. 
+### SUSY
+This example illustrates three optimizations, SO1, SO2, SO3, based on a search for the best staircase cut, to search for SUSY events. Switch to the *SUSY* directory and proceed as in the Higgs example. 
