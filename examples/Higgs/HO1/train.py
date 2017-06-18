@@ -1,43 +1,58 @@
 #!/usr/bin/env python
 # -----------------------------------------------------------------------------
 #  File:        train.py
-#  Description: Example of Random Grid Search to find the results of an
-#               ensemble cuts. 
+#  Description: HO1 optimization example
 #  Created:     10-Jan-2015 Harrison B. Prosper and Sezen Sekmen
+#  Updated:     17-Jun-2017 HBP get ready for release
 # -----------------------------------------------------------------------------
 import os, sys, re
-from rgsutil import *
 from string import *
-from ROOT import *
+try:
+    from rgsutil import *
+except:
+    sys.exit("** first do\n\tsource setup.sh\n** to setup the RGS package")
+try:
+    from ROOT import *
+except:
+    sys.exit("** ROOT with PyROOT is needed to run this example")
 # -----------------------------------------------------------------------------
+# read scale factors
+execfile('../../data/scales.py')
+    
 def main():
+    NAME = 'HO1'
     print "="*80
-    print "\t=== Example 1 - Box Cuts ==="
+    print "\t=== %s ===" % NAME
     print "="*80
 
     # ---------------------------------------------------------------------
     # Load the RGS shared library and check that the various input files
     # exist.
     # ---------------------------------------------------------------------
-    if gSystem.Load("libRGS") < 0:
-        error("unable to load libRGS")
+    gSystem.AddDynamicPath('$RGS_PATH/lib')
+    if gSystem.Load("libRGS") < 0: error("unable to load libRGS")
 
     # Name of file containing cut definitions
     # Format of file:
     #   variable-name  cut-type (>, <, <>, |>, |<, ==)
-    varfilename = "example1.cuts"
+    varfilename = "%s.cuts" % NAME
     if not os.path.exists(varfilename):
         error("unable to open variables file %s" % varfilename)
 
     # Name of signal file
-    sigfilename = "../data/vbf13TeV_train.root"
+    sigfilename  = "../../data/ntuple_HZZ4L_VBF.root"
     if not os.path.exists(sigfilename):
         error("unable to open signal file %s" % sigfilename)
 
     # Name of background file        
-    bkgfilename = "../data/ggf13TeV_train.root"
-    if not os.path.exists(bkgfilename):
-        error("unable to open background file %s" % bkgfilename)
+    bkgfilename1 = "../../data/ntuple_HZZ4L.root"
+    if not os.path.exists(bkgfilename1):
+        error("unable to open background file %s" % bkgfilename1)
+
+    # Name of background file        
+    bkgfilename2 = "../../data/ntuple_ZZ4L.root"
+    if not os.path.exists(bkgfilename2):
+        error("unable to open background file %s" % bkgfilename2)        
 
     # ---------------------------------------------------------------------
     #  Create RGS object
@@ -48,11 +63,12 @@ def main():
     # ---------------------------------------------------------------------
     cutdatafilename = sigfilename
     start      = 0           # start row 
-    maxcuts    = 1000        # maximum number of cut-points to consider
+    maxcuts    = 10000       # maximum number of cut-points to consider
     treename   = "Analysis"  # name of Root tree 
     weightname = "weight"    # name of event weight variable
-    
-    rgs = RGS(cutdatafilename, start, maxcuts, treename, weightname)
+    selection  = ""
+    rgs = RGS(cutdatafilename, start, maxcuts, treename,
+                  weightname, selection)
 
     # ---------------------------------------------------------------------
     #  Add signal and background data to RGS object.
@@ -60,8 +76,9 @@ def main():
     #  present.
     #  NB: We asssume all files are of the same format.
     # ---------------------------------------------------------------------
-    start    = 0 #  start row
-    numrows  =-1 #  scan all the data from the files
+    start    =  0   #  start row
+    numrows  = -1   #  scan all the data from the files
+    
     # The last (optional) argument is a string, which, if given, will be
     # appended to the "count" and "fraction" variables. The "count" variable
     # contains the number of events that pass per cut-point, while "fraction"
@@ -69,8 +86,9 @@ def main():
     # If no string is given, the default is to append an integer to the
     # "count" and "fraction" variables, starting at 0, in the order in which
     # the files are added to the RGS object.
-    rgs.add(bkgfilename, start, numrows, "_b")
-    rgs.add(sigfilename, start, numrows, "_s")
+    rgs.add(sigfilename,  start, numrows, "_VBF", VBFscale, selection)
+    rgs.add(bkgfilename1, start, numrows, "_ggF", ggFscale, selection)
+    rgs.add(bkgfilename2, start, numrows, "_ZZ",  ZZscale,  selection)
 
     # ---------------------------------------------------------------------	
     #  Run RGS and write out results
@@ -78,12 +96,8 @@ def main():
     rgs.run(varfilename)
 
     # Write to a root file
-    rgsfilename = "%s.root" % nameonly(varfilename)
+    rgsfilename = "%s.root" % NAME
     rgs.save(rgsfilename)
-
-    # Write to a text file
-    rgsfilename = "%s.txt" % nameonly(varfilename)
-    rgs.save(rgsfilename)    
 # -----------------------------------------------------------------------------
 try:
     main()

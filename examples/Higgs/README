@@ -1,0 +1,63 @@
+Higgs boson example
+-------------------
+
+First define environment variables by "sourcing" the setup scripts from the
+RGS directory:
+
+    source setup.sh   (for a bash shell)
+
+Description
+-----------
+In this example, we use RGS optimization to find cuts that produce a sample of 
+events in the 4-lepton final states enriched in Higgs vector boson fusion (VBF)
+events relative to di-Z boson (ZZ) events and Higgs boson events produced
+through gluon gluon fusion (ggF).Three optimizations are considered, labeled
+HO1, HO2, and HO3. RGS optimization consists of two steps. In the first,
+implemented by executing the command
+
+   ./train.py
+
+the signal and background counts associated with each cut is determined and the
+results stored in a ROOT file. In the second, the results stored in this ROOT
+file are analyzed through the command
+
+   ./analysis.py
+
+which computes the Z value of each cut and finds the best cut, that is, the one
+with the hightest Z value.
+
+HO1
+---
+One-sided cuts
+
+   Z1mass <
+   Z2mass <
+
+on the Z-boson masses, Z1mass and Z2mass, and specified in the file HO1.cuts,
+are used to discriminate between Higgs boson events (ggF+VBF) and ZZ events.
+There is no explicit restriction on the 4-lepton mass (mass4l). The results of
+the second step are written to the file r_HO1.txt, the cuts are represented
+graphically in h_HO1.pdf, and a receiver operating curev (ROC) in shown in the
+file h_HO1_ROC.pdf.
+
+HO2
+---
+This is like HO1, except that we use two-sided cuts, specified as follows 
+
+   Z1mass <>
+   Z2mass <>
+
+in the file HO2.cuts and we restrict events to the signal region defined by
+100 < mass4l < 150 GeV. Note that the cuts form a closed rectangle in the
+(Z1mass, Z2mass) plane.
+
+HO3
+---
+The optimal cuts from HO2 are imposed along with the restriction to the signal
+region and the one-sided cuts
+
+   detajj >
+   massjj >
+   
+are applied to the absolute difference between the pseudo-rapidities of the
+jets, detajj, and the di-jet mass, massjj.
