@@ -28,4 +28,4 @@ which will run RGS and store the results in a file called *HO1.root*. To analyze
 which will read the results from *HO1.root*. 
 
 ### SUSY
-This example illustrates three optimizations, SO1, SO2, SO3, based on a search for the best staircase cut, to search for SUSY events. Switch to the *SUSY* directory and proceed as in the Higgs example. 
+This example illustrates three optimizations, SO1, SO2, and SO3 that use staircase cuts to improve the search for SUSY events. Switch to the *SUSY* directory and proceed as in the Higgs example. 
