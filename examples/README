@@ -1,0 +1,74 @@
+Random Grid Search Optimization Examples
+Created: 17 June 2017
+----------------------------------------
+This directory contains two physics examples, Higgs and SUSY, each with three
+different RGS optimizations. For each terminal session, define the required
+environment variables by "sourcing" the setup scripts from the RGS directory:
+
+    source setup.sh   (for a bash shell)
+    
+(Note: setup.sh can in fact be executed from any directory, but if you are using
+a non-bash shell, currently setup.csh must be executed from RGS.)
+
+RGS optimization consists of two steps. In the first step, run using the
+command
+
+   ./train.py
+
+the signal and background counts associated with each cut are determined and the
+results stored in a ROOT file. In the second step, the results stored in this
+ROOT file are analyzed using the command
+
+   ./analysis.py
+
+which computes the Z value of each cut and finds the best one, that is, the one
+with the hightest Z value.
+
+
+(1) Higgs boson example
+-----------------------
+In this example, we use RGS optimization to find cuts that produce a sample of 
+events in the 4-lepton final states enriched in Higgs vector boson fusion (VBF)
+events relative to di-Z boson (ZZ) events and Higgs boson events produced
+through gluon gluon fusion (ggF).Three optimizations are considered, labeled
+HO1, HO2, and HO3. 
+
+HO1
+---
+One-sided cuts
+
+   Z1mass <
+   Z2mass <
+
+on the Z-boson masses, Z1mass and Z2mass, and specified in the file HO1.cuts,
+are used to discriminate between Higgs boson events (ggF+VBF) and ZZ events.
+There is no explicit restriction on the 4-lepton mass (mass4l). The results of
+the second step are written to the file r_HO1.txt, the cuts are represented
+graphically in h_HO1.pdf, and a receiver operating curev (ROC) in shown in the
+file h_HO1_ROC.pdf.
+
+HO2
+---
+This is like HO1, except that we use two-sided cuts, specified as follows 
+
+   Z1mass <>
+   Z2mass <>
+
+in the file HO2.cuts and we restrict events to the signal region defined by
+100 < mass4l < 150 GeV. Note that the cuts form a closed rectangle in the
+(Z1mass, Z2mass) plane.
+
+HO3
+---
+The optimal cuts from HO2 are imposed along with the restriction to the signal
+region and the one-sided cuts
+
+   detajj >
+   massjj >
+   
+are applied to the absolute difference between the pseudo-rapidities of the
+jets, detajj, and the di-jet mass, massjj.
+
+
+(2) SUSY example
+----------------
