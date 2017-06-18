@@ -10,7 +10,7 @@ cd RGS
 make
 source setup.sh
 ```
-The setup need be done only once per terminal session. (NOte: the bash setup can be "sourced" from any directory, but currently the non-bash setup must be sourced from the RGS directory.)
+The setup need be done only once per terminal session. (Note: the bash setup can be "sourced" from any directory, but currently the non-bash setup must be sourced from the RGS directory.)
 
 ## Examples
 There are two examples in the *examples* directory of RGS
