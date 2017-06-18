@@ -10,10 +10,17 @@ cd RGS
 make
 source setup.sh
 ```
-The setup need be done only once per terminal session. (Note: the bash setup can be "sourced" from any directory, but currently the non-bash setup must be sourced from the RGS directory.)
+The setup need be done only once per terminal session. (Note: the bash setup can be "sourced" from any directory, but currently the non-bash setup must be sourced from the RGS directory.) 
 
 ## Examples
-There are two examples in the *examples* directory of RGS
+There are two examples in the *examples* directory of RGS. These examples require Root data files, which can get obtained using the commands
+```
+cd examples/data
+wget http://www.hep.fsu.edu/~harry/RGS/data/Higgs.tar.gz 
+tar zxvf Higgs.tar.gz
+```
+or downloaded from the website via a web browser. Use a similar procedure for the SUSY data files _Susy.tar.gz_.
+
 ### Higgs
 This example illustrates three RGS optimizations, HO1, HO2, and HO3, designed to enhance the ratio of Higgs vector boson fusion (VBF) events to Higgs gluon gluon fusion (ggF) events and di-Z boson events. Each optimization can be run by executing the _train.py_ program followed by _analysis.py_ program. For example,
 HO1 can be run as follows
