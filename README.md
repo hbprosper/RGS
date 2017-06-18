@@ -15,17 +15,17 @@ The setup need be done only once per terminal session. (Note: the bash setup can
 ## Examples
 There are two examples in the *examples* directory of RGS
 ### Higgs
-This example illustrates three RGS optimizations, HO1, HO2, and HO3, designed isolate Higgs vector boson fusion events. Each optimization can be run by executing the _train.py_ and _analysis.py_ programs. For example,
+This example illustrates three RGS optimizations, HO1, HO2, and HO3, designed to enhance the ratio of Higgs vector boson fusion (VBF) events to Higgs gluon gluon fusion (ggF) events and di-Z boson events. Each optimization can be run by executing the _train.py_ followed by _analysis.py_ programs. For example,
 HO1 can be run as follows
 ```
 cd examples/Higgs/HO1
 ./train.py
 ```
-which will run RGS and store the results in a file called *HO1.root*. To analyze the results of RGS do
+which will run RGS and store its results in a file called *HO1.root*. To analyze the results of RGS do
 ```
 ./analysis.py
 ```
-which will read the results from *HO1.root*. 
+which will read the results from *HO1.root* and write the results to *r_HO1.txt* and also produce a couple of plots.
 
 ### SUSY
 This example illustrates three optimizations, SO1, SO2, and SO3 that use staircase cuts to improve the search for SUSY events. Switch to the *SUSY* directory and proceed as in the Higgs example. 
