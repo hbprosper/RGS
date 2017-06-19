@@ -133,18 +133,19 @@ bool slurpTable(string filename,
   // Get maximum numer of rows or events available
   int nrow=0;     // number of rows read
   int maxrows=0;
+  TFile* rfile=0;
+  TTree* tree=0;
   if ( ntuple )
     {
       // We assume this is a ROOT ntuple since a tree name has been
       // given
-      TFile rfile(filename.c_str());
-      if ( !rfile.IsOpen() )
+      rfile = TFile::Open(filename.c_str());
+      if ( !rfile->IsOpen() )
 	error("slurpTable - unable to open "+filename);
-      
-      TTree* tree = (TTree*)rfile.Get(treename.c_str());
+      tree = (TTree*)rfile->Get(treename.c_str());
       if ( !tree )
 	error("slurpTable - unable to get tree "+treename);
-      
+
       // Read "count" rows if count > 0, otherwise read all lines
       maxrows = tree->GetEntries();
     }
@@ -184,14 +185,6 @@ bool slurpTable(string filename,
   if ( ntuple )
     {
       // We assume this is a simple ROOT ntuple
-      TFile rfile(filename.c_str());
-      if ( !rfile.IsOpen() )
-	error("slurpTable - unable to open "+filename);
-
-      TTree* tree = (TTree*)rfile.Get(treename.c_str());
-      if ( !tree )
-	error("slurpTable - unable to get tree "+treename);
-      
       tree->ResetBranchAddresses();
             
       // Optionally, allow for event selection when using trees
@@ -205,17 +198,17 @@ bool slurpTable(string filename,
       TObjArray* branches = tree->GetListOfBranches();
       int nbranches = branches->GetEntries();
       vector<int>    ibuffer(nbranches);
+      vector<unsigned int>    uibuffer(nbranches);
       vector<float>  fbuffer(nbranches);
       vector<double> dbuffer(nbranches);
       vector<char>   vtype(nbranches);
-
       for(int i=0; i < nbranches; i++)
 	{
-	  // Assume simple ntuple with leaf name = branch name
+	  // Assume simple ntuple, where we take the first leaf associated with each branch
 	  TBranch* branch = (TBranch*)(branches->At(i));
 	  header.push_back(branch->GetName());
-	  TLeaf* leaf = branch->GetLeaf(branch->GetName());
-
+	  TObjArray* leaves = branch->GetListOfLeaves();
+	  TLeaf* leaf = (TLeaf*) leaves->At(0);
 	  vtype[i] = leaf->GetTypeName()[0];
 	  if      ( vtype[i] == 'I' )
 	    tree->SetBranchAddress(header.back().c_str(), &ibuffer[i]);
@@ -223,9 +216,11 @@ bool slurpTable(string filename,
 	    tree->SetBranchAddress(header.back().c_str(), &fbuffer[i]);
 	  else if ( vtype[i] == 'D' )
 	    tree->SetBranchAddress(header.back().c_str(), &dbuffer[i]);
+	  else if      ( vtype[i] == 'i' )
+	    tree->SetBranchAddress(header.back().c_str(), &uibuffer[i]);
 	}
-
       // Loop "count" entries, starting at start. 
+
       for(int row=start; row < maxrows; row++)
 	{
 	  tree->GetEntry(row);
@@ -241,6 +236,8 @@ bool slurpTable(string filename,
 	    {	     
 	      if ( vtype[i] == 'I' )
 		dbuffer[i] = ibuffer[i];
+	      else if ( vtype[i] == 'i' )
+		dbuffer[i] = uibuffer[i];
 	      else if ( vtype[i] == 'F' )
 		dbuffer[i] = fbuffer[i];
 	    }
@@ -254,6 +251,7 @@ bool slurpTable(string filename,
           if ( nrow >= count ) break; // read "count" rows
 
 	}
+	    
       if ( keep ) delete keep;
     }
   else
@@ -295,6 +293,7 @@ bool slurpTable(string filename,
       stream.close();
     }
   cout << "\t\ttotal number of events read: " << nrow << endl << endl;
+        
   return true;
 }
 
@@ -1417,7 +1416,7 @@ RGS::_saveToNtupleFile(string resultfilename)
   cout << endl << "RGS: Saving RGS results to ROOT file: " << endl;
   cout << "\t" << resultfilename << endl;
 
-  TFile* file = new TFile(resultfilename.c_str(), "recreate"); 
+  TFile* file = TFile::Open(resultfilename.c_str(), "recreate"); 
   TTree* tree = new TTree("RGS", "RGS");
 
   // Declare a buffer of size, maxcuts x maxpoints, for writing out cut
