@@ -17,6 +17,7 @@
 //           28-May-2016 HBP - minor update
 //           02-Jun-2016 HBP - add option overall weighting of events
 //           19-Feb-2017 HBP - add histogram with counts (from 30,000 feet!)
+//           17-Jun-2017 HBP - rename ladder to staircase, box to twosided
 //----------------------------------------------------------------------------
 #include <stdio.h>
 #include <cmath>
@@ -36,17 +37,13 @@
 
 using namespace std;
 
-#ifdef __WITH_CINT__
-ClassImp(RGS)
-#endif
-
 // define DBRGS at the command line in order to tun on debugging
 static int DEBUG = getenv("DBRGS") > (char*)0 ? atoi(getenv("DBRGS")) : 0;
 
 // return RGS version number
 string rgsversion() 
 {
-  return string("RGS v2.4");
+  return string("RGS v2.5");
 }
 //----------------------------------------------------------------------------
 // A bunch of simple string-based utilities
@@ -122,11 +119,17 @@ bool slurpTable(string filename,
 		int start,
 		int count,
 		string treename,
-		string selection)
+		string selection,
+		string  weightname,
+		double  fileweight,		
+		double& tot,
+		double& err,
+		int&    weightindex)		
 {
   cout << "\t" << filename << endl;
   header.clear();
-
+  weightindex = -1;
+  
   // If treename given assume this is an ntuple
   bool ntuple = treename != "";
 
@@ -178,9 +181,10 @@ bool slurpTable(string filename,
     }
   
   // I'm alive printout - print row count every "step" entries
-  int step = count / 10;
-  if ( step <= 0 ) step = 10000;
-        
+  int step = 10000;
+  tot = 0.0;
+  err = 0.0;
+  
   if ( ntuple )
     {
       // We assume this is a simple ROOT ntuple
@@ -214,6 +218,9 @@ bool slurpTable(string filename,
 	  // Assume simple ntuple with leaf name = branch name
 	  TBranch* branch = (TBranch*)(branches->At(i));
 	  header.push_back(branch->GetName());
+	  
+	  if ( header.back() == weightname ) weightindex = i;
+	  
 	  TLeaf* leaf = branch->GetLeaf(branch->GetName());
 
 	  vtype[i] = leaf->GetTypeName()[0];
@@ -225,7 +232,7 @@ bool slurpTable(string filename,
 	    tree->SetBranchAddress(header.back().c_str(), &dbuffer[i]);
 	}
 
-      // Loop "count" entries, starting at start. 
+      // Loop "count" entries, starting at start.
       for(int row=start; row < maxrows; row++)
 	{
 	  tree->GetEntry(row);
@@ -246,11 +253,22 @@ bool slurpTable(string filename,
 	    }
 	  // Cache row
 	  data.push_back(dbuffer);
+	  
+	  double w = fileweight;
+	  if ( weightindex > -1 ) w *= dbuffer[weightindex];
+
+	  tot += w;
+	  err += w * w;
 
 	  // Increment number of rows read
 	  nrow++;
-	  if ( nrow % step == 0 ) cout << "\t\trows read: " << nrow << endl;
-          if ( count < 0 ) continue; // read all remaining rows
+	  
+	  if ( nrow % step == 0 )
+	    cout << "\t\trows selected: " << nrow
+		 << "\tread: " << row+1
+		 << endl;
+
+          if ( count < 0 ) continue;  // read all remaining rows
           if ( nrow >= count ) break; // read "count" rows
 
 	}
@@ -271,7 +289,13 @@ bool slurpTable(string filename,
       string line;
       getline(stream, line, '\n');
       istringstream inp(line);
-      while ( inp >> line ) header.push_back(line);
+      int c = 0;
+      while ( inp >> line )
+	{
+	  header.push_back(line);
+	  if ( header.back() == weightname ) weightindex = c;
+	  c++;
+	}
 
       // Skip the first "start" lines
       int n=0;
@@ -287,14 +311,22 @@ bool slurpTable(string filename,
           istringstream inp2(line);      
           for(int i=0; i < (int)header.size(); i++) inp2 >> d[i];
           data.push_back(d);
-          nrow++;
+
+	  double w = fileweight;
+	  if ( weightindex > -1 ) w *= d[weightindex];
+
+	  tot += w;
+	  err += w * w;
+
 	  if ( nrow % step == 0 ) cout << "\t\trows read: " << nrow << endl;
+	  // Increment number of rows read
+	  nrow++;	  
           if ( count < 0 ) continue; // read all remaining rows
           if ( nrow >= count ) break;
         }
       stream.close();
     }
-  cout << "\t\ttotal number of events read: " << nrow << endl << endl;
+  cout << "\t\t     selected: " << nrow << endl << endl;
   return true;
 }
 
@@ -324,7 +356,10 @@ RGS::RGS(vstring& cutdatafilenames, int start, int numrows,
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
-    _weight(vector<double>())
+    _weightindex(vector<int>()),
+    _weight(vector<double>()),
+    _totals(vector<double>()),
+    _errors(vector<double>())
 {
   // Definitions:
   //  Cut-point
@@ -348,7 +383,10 @@ RGS::RGS(string cutdatafilename, int start, int numrows,
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
-    _weight(vector<double>())    
+    _weightindex(vector<int>()),
+    _weight(vector<double>()),    
+    _totals(vector<double>()),
+    _errors(vector<double>())    
 {
   vstring cutdatafilenames(1, cutdatafilename);
   _init(cutdatafilenames, start, numrows, _treename, _selection);
@@ -396,32 +434,32 @@ RGS::add(string searchfilename,
 
   // Cache column number of weights
   _weightindex.push_back(-1); // index to weight field
+
+  _totals.push_back(0);
+  _errors.push_back(0);
+  
   _status = 0;
 
   // Create an alias of _searchdata.back() (called "sdata"),  NOT a copy!
   vector<vector<double> >& sdata = _searchdata.back();
-  vector<string> header;
 
+
+  // If no selection specified, we shall assume that the cached
+  // selection should be used.
+  if ( selection == "" ) selection = _selection;
+  
   // Ok, suck up data!
   cout << "\nRGS: Reading search data from file:" << endl;
+  vector<string> header;
   if ( ! slurpTable(searchfilename, header, sdata, start, numrows, 
 		    _treename, 
-		    selection) )
+		    selection,
+		    _weightname,
+		    _weight.back(),
+		    _totals.back(),
+		    _errors.back(),
+		    _weightindex.back()) )
     error("RGS: unable to read file " + searchfilename);
-
-  // The data may be weighted. Find the column corresponding
-  // to the weights, if such exists
-  for(int i = 0; i < (int)header.size(); i++)
-    {
-      if ( _weightname == header[i] )
-        {
-          _weightindex.back() = i;
-          cout << "\tRGS will weight events with the variable \""
-               << _weightname
-               << "\" in column " << i << endl;
-          break;
-        }
-    }
 
   cout << "\tSearch data will be identified with " << resultname << " in the RGS results file." << endl;
 
@@ -441,37 +479,33 @@ RGS::add(vector<string>& searchfilenames,
   _resultname.push_back(resultname);  
   _searchdata.push_back(vvdouble());
   _weightindex.push_back(-1); // Index to weight field
+  _totals.push_back(0);
+  _errors.push_back(0);
+  
   _status = 0;
   vector<vector<double> >& sdata = _searchdata.back();
-  vector<string> header;
 
+  // If no selection specified, we shall assume that the cached
+  // selection should be used.
+  if ( selection == "" ) selection = _selection;
+  
   // ok, suck up data to be searched
   cout << "\nRGS: Reading data from file(s):" << endl;
   for(unsigned int ifile=0; ifile < searchfilenames.size(); ifile++)
     {
       // Cache weight/file
       _weight.push_back(weight);
-      
-      header.clear();
+      vector<string> header;
       if ( ! slurpTable(searchfilenames[ifile], header,
 			sdata, start, numrows, 
 			_treename, 
-			selection) )
+			selection,
+			_weightname,
+			_weight.back(),
+			_totals.back(),
+			_errors.back(),
+			_weightindex.back()) )
           error("RGS: unable to read file " + searchfilenames[ifile]);
-    }
-
-  // The data may be weighted. Find the column corresponding
-  // to the weights, if such exists  
-  for(unsigned int i = 0; i < header.size(); i++)
-    {
-      if ( _weightname == header[i] )
-        {
-          _weightindex.back() = i;
-          cout << "\tRGS will weight events with the variable """
-               << _weightname
-               << """ in column " << i << endl;
-          break;
-        }
     }
 }
 
@@ -496,15 +530,15 @@ void RGS::run(string varfilename, // variables file name
   //
   // Syntax of variables file:
   //
-  // 1. uni-directional cut
+  // 1. one-sided cut
   //      variable-name cut-direction
   //
-  // 2. bi-directional (box) cut 
+  // 2. two-sided cut 
   //      variable-name <>
   //
-  // 3. ladder cut
+  // 3. staircase cut
   //
-  //      \ladder number of cut-points
+  //      \staircase number of cut-points
   //          variable-name-1 cut-direction-1
   //          variable-name-2 cut-direction-2
   //                   : :
@@ -512,11 +546,11 @@ void RGS::run(string varfilename, // variables file name
 
   // cutvar will contain the first field (the variable name)
   // cutdir will contain the remaining fields (either the cut-direction
-  // or if cutvar is the keyword "\ladder", it will be the number of
-  // cut-points that comprise the ladder, that is, the number of
+  // or if cutvar is the keyword "\staircase", it will be the number of
+  // cut-points that comprise the staircase, that is, the number of
   // cut-points to be ORed.
   //
-  // Note: a ladder cut can comprise any combination of uni-directional cuts
+  // Note: a staircase cut can comprise any combination of uni-directional cuts
 
   vstring cutvar;
   vstring cutdir;
@@ -570,8 +604,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
     cout << endl << "RUN algorithm" << endl;
 
   // Make sure length of cutvar and cutdir are the same
-  // Note: for ladder cuts, cutvar should contain the keyword 
-  // (\ladder and \end) that delimit the ladder cuts.
+  // Note: for staircase cuts, cutvar should contain the keyword 
+  // (\staircase and \end) that delimit the staircase cuts.
 
   if ( cutvar.size() != cutdir.size() )
     error("RGS: length(cutvar) != length(cutdir)");
@@ -581,7 +615,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
   _index.clear();
 
   // The number of cut-points / cut (multiple cuts-points for a
-  // a ladder cut, and 2 for a box cut)
+  // a staircase cut, and 2 for a twosided cut)
   _cutpointcount.clear();
 
   // The indices of cut-points.
@@ -593,9 +627,9 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 
   _status = 0;
 
-  // Initialize buffers for total number of events and
-  // number of (possibly weighted) events passing cuts
-  _totals.resize(_searchdata.size(),0.0);
+  // Initialize buffers for number of (possibly weighted)
+  // events passing cuts
+  // _totals.resize(_searchdata.size(),0.0);
   _errors.resize(_searchdata.size(),0.0);
   _counts.resize(_searchdata.size(),vdouble());
   for (int i = 0; i < (int)_counts.size(); i++)
@@ -609,49 +643,57 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 
   // Default number of simultaneous cuts-points to consider.
   // However, by the end of the following loop, maxpoints will
-  // have increased if we have at least one box or ladder cut.
+  // have increased if we have at least one twosided or staircase cut.
   int maxpoints = 1; 
 
-  bool ladderActive = false; // Set to true while decoding a ladder cut
+  bool staircaseActive = false; // Set to true while decoding a staircase cut
 
   for (unsigned int i = 0; i < cutdir.size(); i++)
     {
       int code  =-1;
-      int pointcount = 1; // number of cut-points/ladder or box cut
+      int pointcount = 1; // number of cut-points/staircase or twosided cut
+      
+      bool startOfStaircase =
+	cutvar[i].substr(0, 2) == "\\s" ||
+	cutvar[i].substr(0, 2) == "\\S" ||	
+	cutvar[i].substr(0, 2) == "\\l" ||
+	cutvar[i].substr(0, 2) == "\\L";
 
-      // Check for the start of a ladder cut
-      if ( cutvar[i].substr(0, 2) == "\\l" ||
-           cutvar[i].substr(0, 2) == "\\L" )
+      bool endOfStaircase =
+	cutvar[i].substr(0, 2) == "\\e" ||
+	cutvar[i].substr(0, 2) == "\\E";
+
+      // Check for the start of a staircase cut      
+      if ( startOfStaircase )
         {
-          // Found start of a ladder block.
-          // NB: Nested ladders are not allowed
-          if ( ladderActive )
-	    error("RGS: nested ladders are not allowed!");
+          // Found start of a staircase block.
+          // NB: Nested staircases are not allowed
+          if ( staircaseActive )
+	    error("RGS: nested staircases are not allowed!");
 
-          ladderActive = true;
-          code = LADDER;
+          staircaseActive = true;
+          code = STAIRCASE;
           istringstream sin(cutdir[i]);
 
-          // Get number of cut-points/ladder
+          // Get number of cut-points/staircase
           sin >> pointcount;          
           if ( pointcount > maxpoints ) maxpoints = pointcount;
         }
-      else if ( cutvar[i].substr(0, 2) == "\\e" ||
-                cutvar[i].substr(0, 2) == "\\E" )
+      else if ( endOfStaircase )
         {
-          // Found end of a ladder
-          ladderActive = false; // deactivate ladder state
+          // Found end of a staircase
+          staircaseActive = false; // deactivate staircase state
           code = END;
         }
       else if ( inString(cutdir[i],"<>") )
         {
-          // BOX cuts are not allowed in ladders (in current RGS version)
-          if ( ladderActive )
-	    error("RGS: Box cuts not implemented "
-		  "for ladders...maybe some day!");
+          // TWOSIDED cuts are not allowed in staircases
+	  // (in current RGS version)
+          if ( staircaseActive )
+	    error("RGS: Two-sided cuts within staircasee not yet implemented!");
 
-          code = BOX;
-          pointcount = 2; // two points needed for a box cut
+          code = TWOSIDED;
+          pointcount = 2; // two points needed for a twosided cut
           if ( pointcount > maxpoints ) maxpoints = pointcount;
         }
       else if ( inString(cutdir[i],">") )
@@ -686,14 +728,12 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	}
       
       // Get column index of current cut variable
-      if ( cutvar[i].substr(0, 2) == "\\l" ||
-           cutvar[i].substr(0, 2) == "\\L" )
+      if       ( startOfStaircase )
         {
           _index.push_back(0); // Not used; so just set to any valid value
-          //cout << "begin ladder cut" << endl;
+          //cout << "begin staircase cut" << endl;
         }
-      else if (cutvar[i].substr(0, 2) == "\\e" ||
-               cutvar[i].substr(0, 2) == "\\E" )
+      else if ( endOfStaircase )
         {
           _index.push_back(0); // Not used; so just set to any valid value
           //cout << "end" << endl;
@@ -706,7 +746,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
           else
 	    error("RGS: cut variable "+cutvar[i]+" NOT found");
       
-          // if ( code == BOX ) cout << "box cut" << endl;
+          // if ( code == TWOSIDED ) cout << "twosided cut" << endl;
           // cout << i << "\t" << _index.back() << "\t" 
           //      << cutvar[i] << "\t" << cutdir[i] 
           //      << " cut code " << code << endl;
@@ -716,8 +756,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
     cout << "END DECODE CUTS" << endl << endl;
   
   // -------------------------------------------------------------------------
-  // Here we augment each cut-point so that we can handle both box and
-  // ladder cuts. For each cut-point, randomly select maxpoints-1 more 
+  // Here we augment each cut-point so that we can handle both twosided and
+  // staircase cuts. For each cut-point, randomly select maxpoints-1 more 
   // cut-points.
   // -------------------------------------------------------------------------
 
@@ -729,8 +769,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
   for (int cutpoint = 0; cutpoint < (int)_cutdata.size(); cutpoint++)
     {
       // Reserve space for indices of cut-points
-      // maxpoints will be bigger than 1 if we have at least one box or
-      // ladder cut.
+      // maxpoints will be bigger than 1 if we have at least one twosided or
+      // staircase cut.
       _cutpointindex.push_back(vector<int>(maxpoints));
 
       // The first position is the index of the original cut-point
@@ -791,9 +831,9 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
           cout << "\tcuts to apply: " << endl;
           for (int cut = 0; cut < (int)cutvar.size(); cut++)
             {
-              if ( _cutcode[cut] == LADDER )
+              if ( _cutcode[cut] == STAIRCASE )
                 {
-                  cout << "\t\tladder" << endl;
+                  cout << "\t\tstaircase" << endl;
                   continue;
                 }
               else if ( _cutcode[cut] == END )
@@ -843,9 +883,9 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 #endif
               // Loop over cut values. 
 
-              // If we are processing a ladder cut then on exit
-              // from _laddercut, cut should point to the end of
-              // ladder 
+              // If we are processing a staircase cut then on exit
+              // from _staircasecut, cut should point to the end of
+              // staircase 
 
               bool passed = true;
 
@@ -884,11 +924,11 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
                     }
 #endif
                   // -------------------------------------
-                  // 2. apply cut. If this is a box
-                  // or a ladder cut, we need to loop over
+                  // 2. apply cut. If this is a twosided
+                  // or a staircase cut, we need to loop over
                   // multiple cut-points. The looping is 
-                  // handled by the methods _boxcut and 
-                  // _laddercut, respectively.
+                  // handled by the methods _twosidedcut and 
+                  // _staircasecut, respectively.
                   // -------------------------------------
                   switch (_cutcode[cut])
                     {
@@ -912,14 +952,14 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
                       passed = x == xcut;
                       break;
 
-                    case BOX:
+                    case TWOSIDED:
                       // Note: need to use index jcut, not cut
-                      passed = _boxcut(x, cutpoint, jcut);
+                      passed = _twosidedcut(x, cutpoint, jcut);
                       break;
 
-                    case LADDER:
-                      // Upon exit, cut should point to end of ladder
-                      passed = _laddercut(sdata[row], cutpoint, cut);
+                    case STAIRCASE:
+                      // Upon exit, cut should point to end of staircase
+                      passed = _staircasecut(sdata[row], cutpoint, cut);
                       break;
                       
                     default:
@@ -939,11 +979,11 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	      double weight = _weight[file];
               if ( useEventWeight ) weight = weight * sdata[row][weightindex];
               
-              if ( cutpoint == 0 )
-		{
-		  _totals[file] += weight;
-		  _errors[file] += weight*weight;
-		}
+              // if ( cutpoint == 0 )
+	      // 	{
+	      // 	  _totals[file] += weight;
+	      // 	  _errors[file] += weight*weight;
+	      // 	}
           
               if ( passed ) _counts[file][cutpoint] += weight;
 
@@ -963,9 +1003,9 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 }
 
 
-// Box cut:    xcut_low < c < xcut_high
+// Twosided cut:    xcut_low < c < xcut_high
 inline
-bool RGS::_boxcut(float x, int cutpoint, int jcut)
+bool RGS::_twosidedcut(float x, int cutpoint, int jcut)
 {
   // get cut-points
   int cutpoint_1 =_cutpointindex[cutpoint][0];
@@ -989,7 +1029,7 @@ bool RGS::_boxcut(float x, int cutpoint, int jcut)
   if ( DEBUG > 2 )
     {
       float xcuthigh = max(xcut1, xcut2);
-      cout << "\t\t   BOX" << endl;
+      cout << "\t\t   TWOSIDED" << endl;
       cout << "\t\t\t" 
            << _var[jcut] << "\t" << x << " > " << xcutlow << endl;
       cout << "\t\t\t" 
@@ -999,33 +1039,33 @@ bool RGS::_boxcut(float x, int cutpoint, int jcut)
   return passed;
 }
 
-// Ladder cut:    OR of cut-points
+// Staircase cut:    OR of cut-points
 // Loop over cut-points for current cut
 // IMPORTANT: on exit, the cut number should point to the 
-// end of the ladder indicated by the cutcode END.
+// end of the staircase indicated by the cutcode END.
 
 inline
-bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
+bool RGS::_staircasecut(vdouble& datarow, int origcutpoint, int& cut)
 {
 #ifdef RGSDEBUG
   if ( DEBUG > 2 )
     {
-      cout << "\t\t   LADDER" << endl;
+      cout << "\t\t   STAIRCASE" << endl;
     }
 #endif
 
-  // Loop over cut-points of ladder
-  // ladderpassed will be true if at least one cut-point of the
-  // ladder returns true
+  // Loop over cut-points of staircase
+  // staircasepassed will be true if at least one cut-point of the
+  // staircase returns true
 
-  bool ladderpassed = false;
+  bool staircasepassed = false;
 
   // Recall: _cutcode contains all cut codes including the codes
-  // for keywords \ladder and \end
+  // for keywords \staircase and \end
 
   int maxcuts = (int)_cutcode.size();
 
-  // Get number of cut points to use for current ladder
+  // Get number of cut points to use for current staircase
   int pointcount = _cutpointcount[cut];
 
 #ifdef RGSDEBUG
@@ -1035,7 +1075,7 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
     }
 #endif
 
-  // Remember first cut of ladder
+  // Remember first cut of staircase
   int firstcut = cut;
   firstcut++;
 
@@ -1050,10 +1090,10 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
       // Get cut-point index
       int cutpoint = _cutpointindex[origcutpoint][ii];
 
-      bool endOfladder = false;
+      bool endOfstaircase = false;
       bool passed = true;
 
-      // loop over cuts, starting each time at first cut of ladder
+      // loop over cuts, starting each time at first cut of staircase
       
       cut = firstcut;
       while ( cut < maxcuts )
@@ -1120,7 +1160,7 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
               break;
               
             case END:
-              endOfladder = true;
+              endOfstaircase = true;
               break;
 
             default:
@@ -1130,15 +1170,15 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
           // If any cut fails, there is no point continuing
           if ( ! passed ) break;
 
-          // break out of loop over cuts if we have reached end of ladder
-          if ( endOfladder ) break;
+          // break out of loop over cuts if we have reached end of staircase
+          if ( endOfstaircase ) break;
 
           // IMPORTANT: Remember to increment cut number
           cut++;
         }
 
-      // Make sure we are at the end of the ladder
-      if ( ! endOfladder )
+      // Make sure we are at the end of the staircase
+      if ( ! endOfstaircase )
         {
           cut++;
           while ( cut < maxcuts )
@@ -1157,10 +1197,10 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
         }
 #endif
       // Take OR of cuts over cut-points
-      ladderpassed = ladderpassed || passed;
+      staircasepassed = staircasepassed || passed;
 
       // If a cut succeeds, there is no need to continue
-      if ( ladderpassed ) break;
+      if ( staircasepassed ) break;
     }
 
 #ifdef RGSDEBUG
@@ -1169,7 +1209,7 @@ bool RGS::_laddercut(vdouble& datarow, int origcutpoint, int& cut)
       cout << "\t\t   END" << endl;
     }
 #endif
-  return ladderpassed;
+  return staircasepassed;
 }
 
 void
@@ -1198,7 +1238,7 @@ RGS::_saveToTextFile(string resultfilename)
   vector<vector<float> > cutvalue(maxcuts, vector<float>(maxpoints,0));
 
   // Create a header variable for each cut.
-  // For box and ladder cuts, use fixed
+  // For twosided and staircase cuts, use fixed
   // length arrays of the appropriate size
   vector<string> varname; // name of cut variable
   vector<int> varsize;    // number of simultaneous cut-points
@@ -1228,7 +1268,7 @@ RGS::_saveToTextFile(string resultfilename)
           }
           break;
 
-        case BOX:
+        case TWOSIDED:
           {
 	    varname.push_back(var);
 	    varsize.push_back(2);
@@ -1236,17 +1276,17 @@ RGS::_saveToTextFile(string resultfilename)
             cout << "\t" << varname.back()
 		 << "\t" << varsize.back()
 		 << "\t" << varcut.back()
-		 << "\t<== box"	      
+		 << "\t<== twosided"	      
 		 << endl;	    	    
           }
 	  break;
 	  
-        case LADDER:
+        case STAIRCASE:
           {
-            // Get number of cut points to use for current ladder
+            // Get number of cut points to use for current staircase
             int pointcount = _cutpointcount[cut];
 	    
-            cut++; // Go to first cut in ladder
+            cut++; // Go to first cut in staircase
             while ( cut < maxcuts )
               {
                 if ( _cutcode[cut] == END ) break;
@@ -1327,7 +1367,7 @@ RGS::_saveToTextFile(string resultfilename)
               cutvalue[cut][0] = _cutdata[cutpoint][jcut];
               break;
 
-            case BOX:
+            case TWOSIDED:
               {
                 // Get the two cut-points
                 int cutpoint1  =_cutpointindex[cutpoint][0];
@@ -1338,12 +1378,12 @@ RGS::_saveToTextFile(string resultfilename)
               }
               break;
 
-            case LADDER:
+            case STAIRCASE:
               {
-                // Get number of cut points to use for current ladder
+                // Get number of cut points to use for current staircase
                 int pointcount = _cutpointcount[cut];
 		cut++;
-                // Remember cut number of first cut in ladder
+                // Remember cut number of first cut in staircase
                 int firstcut = cut;
 		// Loop of points to be ORed and, for each, loop
 		// over cuts to be ANDed. But make sure we store
@@ -1354,7 +1394,7 @@ RGS::_saveToTextFile(string resultfilename)
                     // Get cut-point using the index into the
 		    // cutdata vector.
                     int cutpoint_i  =_cutpointindex[cutpoint][i];
-		    // Remember to reset to first cut in ladder
+		    // Remember to reset to first cut in staircase
 		    // to be ANDed
                     cut = firstcut;
                     while ( cut < maxcuts )
@@ -1380,7 +1420,7 @@ RGS::_saveToTextFile(string resultfilename)
       // Write cuts. Use varcut to "zero-suppress"
       // cutvalue vector, that is, to skip over entries
       // that are not in fact cut-point indices, but
-      // are just placeholders for the ladder start
+      // are just placeholders for the staircase start
       // and end keywords.
       for(unsigned int j=0; j < varcut.size(); j++)
 	{
@@ -1421,8 +1461,8 @@ RGS::_saveToNtupleFile(string resultfilename)
   TTree* tree = new TTree("RGS", "RGS");
 
   // Declare a buffer of size, maxcuts x maxpoints, for writing out cut
-  // values. NOTE: for ladder cuts, cutvalue will have entries that are
-  // just placeholders for the ladder keywords. But this does not matter since
+  // values. NOTE: for staircase cuts, cutvalue will have entries that are
+  // just placeholders for the staircase keywords. But this does not matter since
   // we pass the address of the appropriate subsets of cutvalue to Root.
   int maxpoints = (int)_cutpointindex[0].size();
   int maxcuts   = (int)_cutcode.size();
@@ -1434,7 +1474,7 @@ RGS::_saveToNtupleFile(string resultfilename)
   vector<float> counts(_counts.size());
   vector<float> fractions(_counts.size());
 
-  // Create branches for each cut. For box and ladder cuts, use fixed
+  // Create branches for each cut. For twosided and staircase cuts, use fixed
   // length arrays of the appropriate size
   int cut = 0;
   char name[80];
@@ -1459,7 +1499,7 @@ RGS::_saveToNtupleFile(string resultfilename)
           }
           break;
 
-        case BOX:
+        case TWOSIDED:
           {
             sprintf(fmt, "%s[2]/F", var.c_str());
             tree->Branch(var.c_str(), &cutvalue[cut][0], fmt);
@@ -1467,11 +1507,11 @@ RGS::_saveToNtupleFile(string resultfilename)
           }
 	  break;
 	  
-        case LADDER:
+        case STAIRCASE:
           {
-            // Get number of cut points to use for current ladder
+            // Get number of cut points to use for current staircase
             int pointcount = _cutpointcount[cut];
-            cut++; // go to first cut of ladder, i.e., the cut to be
+            cut++; // go to first cut of staircase, i.e., the cut to be
 	    // ANDed with the rest.
             while ( cut < maxcuts )
               {
@@ -1539,7 +1579,7 @@ RGS::_saveToNtupleFile(string resultfilename)
               cutvalue[cut][0] = _cutdata[cutpoint][jcut];
               break;
 
-            case BOX:
+            case TWOSIDED:
               {
                 // Get the two cut-points
                 int cutpoint_1  =_cutpointindex[cutpoint][0];
@@ -1550,13 +1590,13 @@ RGS::_saveToNtupleFile(string resultfilename)
               }
               break;
 
-            case LADDER:
+            case STAIRCASE:
               {
-                // Get number of cut points to use for current ladder
+                // Get number of cut points to use for current staircase
                 int pointcount = _cutpointcount[cut];
-		cut++; // go to first cut of ladder, i.e., the cut to be
+		cut++; // go to first cut of staircase, i.e., the cut to be
 		// ANDed with the rest.	      
-                // IMPORTANT: Remember first cut within ladder
+                // IMPORTANT: Remember first cut within staircase
                 int firstcut = cut;
 
                 for(int i=0; i < pointcount; i++)
@@ -1565,7 +1605,7 @@ RGS::_saveToNtupleFile(string resultfilename)
 		    // the cutdata vector.
                     int cutpoint_i  =_cutpointindex[cutpoint][i];
 		    
-		    // Reset to first cut of ladder
+		    // Reset to first cut of staircase
                     cut = firstcut;
                     while ( cut < maxcuts )
                       {
@@ -1724,6 +1764,7 @@ RGS::_init(vstring& cutdatafilenames, int start, int numrows,
   _weightindex.clear();
   _varmap.clear();
   _totals.clear();
+  _errors.clear();
   _counts.clear();
 
   _status = rSUCCESS;

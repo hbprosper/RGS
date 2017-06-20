@@ -70,19 +70,24 @@ def main():
     #  present.
     #  NB: We asssume all files are of the same format.
     # ---------------------------------------------------------------------
-    start    = 0   #  start row
-    numrows  =-1   #  scan all the data from the files
-
-    # The last (optional) argument is a string, which, if given, will be
+    # 1) The first optional argument is a string, which, if given, will be
     # appended to the "count" and "fraction" variables. The "count" variable
     # contains the number of events that pass per cut-point, while "fraction"
     # is count / total, where total is the total number of events per file.
     # If no string is given, the default is to append an integer to the
     # "count" and "fraction" variables, starting at 0, in the order in which
     # the files are added to the RGS object.
-    rgs.add(filename1, start, numrows, "_VBF", VBFscale, selection)
-    rgs.add(filename2, start, numrows, "_ggF", ggFscale, selection)
-    rgs.add(filename3, start, numrows, "_ZZ",  ZZscale,  selection)
+    # 2) The second optional argument is the weight to be assigned per file. If
+    # omitted the default weight is 1.
+    # 3) The third optional argument is the selection string. If omitted, the
+    # selection provided in the constructor is used.
+    
+    start    = 0   #  start row
+    numrows  =-1   #  scan all the data from the files
+
+    rgs.add(filename1, start, numrows, "_VBF", VBFscale)
+    rgs.add(filename2, start, numrows, "_ggF", ggFscale)
+    rgs.add(filename3, start, numrows, "_ZZ",  ZZscale)
 
     # ---------------------------------------------------------------------	
     #  Run RGS and write out results

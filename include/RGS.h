@@ -10,13 +10,9 @@
 // Updated  18-Jan-2015 HBP - add selection argument - Bari, Italy
 //          06-Apr-2015 HBP - add functions to save either to a text file or
 //                      to an ntuple.
-//          19-Fev-2017 HBP - remove lumi argument from save and add
+//          19-Feb-2017 HBP - remove lumi argument from save and add
 //                            error associated with total
 //----------------------------------------------------------------------------
-#ifdef __WITH_CINT__
-#include "TObject.h"
-#endif
-
 #include <string>
 #include <vector>
 #include <map>
@@ -34,6 +30,8 @@ typedef std::vector<vdouble> vvdouble;
 typedef std::vector<std::string>  vstring;
 typedef std::map< std::string, int >  varmap;
 static vdouble  vdNULL;
+static double dNULL=0;
+static int iNEG1=-1;
 
 // ERROR CODES
 
@@ -45,7 +43,7 @@ const int rPYTHONERROR =-7;
 
 /** These codes define the available types of cuts.
  */ 
-enum CUTCODE {GT, LT, ABSGT, ABSLT, EQ, BOX, LADDER, END};
+enum CUTCODE {GT, LT, ABSGT, ABSLT, EQ, TWOSIDED, STAIRCASE, END};
 
 /** Read either a text file or a ROOT ntuple file that contains variable names and values.
     The text file should contain a header of variable names followed by rows of values.
@@ -58,7 +56,12 @@ bool slurpTable(std::string filename,
 		int start=0,
 		int count=-1,
 		std::string treename="",
-		std::string selection="");
+		std::string selection="",
+		std::string weightname="",
+		double  fileweight=1,
+		double& tot=dNULL,
+		double& err=dNULL,
+		int&    weightindex=iNEG1);
 
 /** Return version number of RGS.
  */
@@ -154,35 +157,29 @@ private:
   vint        _cutcode;
   vint        _cutpointcount;
 
+  std::string _treename;
+  std::string _weightname;
+  std::string _selection;
+  
   vstring                   _searchname;
   std::vector< vvdouble >   _searchdata;
   vint                      _weightindex;
   vint        _index;
+  vdouble     _weight;  
   vdouble     _totals;
+  vdouble     _errors;
   vvdouble    _counts;
   vstring _resultname;
-  vdouble     _errors;
-  
-  std::string _treename;
-  std::string _weightname;
-  std::string _selection;
-  vdouble     _weight;
   
   std::vector<std::vector<int> > _cutpointindex;
 
   void _init(vstring& cutdatafilename, int start=0, int numrows=0, 
 	     std::string treename="",
 	     std::string selection="");
-  bool _boxcut(float x, int cutpoint, int jcut);
-  bool _laddercut(vdouble& datarow, int cutpoint, int& cut);
+  bool _twosidedcut(float x, int cutpoint, int jcut);
+  bool _staircasecut(vdouble& datarow, int cutpoint, int& cut);
   void _saveToTextFile(std::string resultfilename);
   void _saveToNtupleFile(std::string resultfilename);
-
-#ifdef __WITH_CINT__
-  public:
-ClassDef(RGS,1)
-#endif    
-
 };
 
 #endif

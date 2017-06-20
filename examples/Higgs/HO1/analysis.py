@@ -22,14 +22,13 @@ from ROOT import *
 
 sys.path.append('../../python')
 from rgsexamples import *
-
 # ---------------------------------------------------------------------
 def cut(event):
     return False
 # ---------------------------------------------------------------------
 def main():
     print "="*80
-    print "\t=== HO1: obtain best uni-directional cuts ==="
+    print "\t=== HO1: obtain best one-sided cuts ==="
     print "="*80
 
     NAME = 'HO1'

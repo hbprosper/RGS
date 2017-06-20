@@ -2,13 +2,12 @@ Random Grid Search Optimization Examples
 Created: 17 June 2017
 ----------------------------------------
 This directory contains two physics examples, Higgs and SUSY, each with three
-different RGS optimizations. For each terminal session, define the required
-environment variables by "sourcing" the setup scripts from the RGS directory:
-
-    source setup.sh   (for a bash shell)
-    
-(Note: setup.sh can in fact be executed from any directory, but if you are using
-a non-bash shell, currently setup.csh must be executed from RGS.)
+different RGS optimizations. In the Higgs example, we try to enhance the Higgs
+vector boson fusion signal relative to the di-Z boson and Higgs gluon gluon
+fusion background. We work with the 4-lepton final states, where the leptons
+are electrons and, or, muons. In the second example, we explore the use of
+staircase and other cuts in constructing optimal cut-based searches for SUSY
+using the razor variables, MR and R2.
 
 RGS optimization consists of two steps. In the first step, run using the
 command
@@ -24,14 +23,21 @@ ROOT file are analyzed using the command
 which computes the Z value of each cut and finds the best one, that is, the one
 with the hightest Z value.
 
+For each terminal session, it is necessary to define a few environment
+variables by "sourcing" the setup scripts from the RGS directory:
+
+    source setup.sh   (for a bash shell)
+    
+(Note: setup.sh can in fact be executed from any directory, but if you are using
+a non-bash shell, currently, setup.csh must be executed from RGS.)
 
 (1) Higgs boson example
 -----------------------
 In this example, we use RGS optimization to find cuts that produce a sample of 
-events in the 4-lepton final states enriched in Higgs vector boson fusion (VBF)
-events relative to di-Z boson (ZZ) events and Higgs boson events produced
-through gluon gluon fusion (ggF).Three optimizations are considered, labeled
-HO1, HO2, and HO3. 
+13 TeV events in the 4-lepton final states enriched in Higgs vector boson
+fusion (VBF) events relative to di-Z boson (ZZ) events and Higgs boson events
+produced through gluon gluon fusion (ggF). Three optimizations are considered,
+labeled HO1, HO2, and HO3. 
 
 HO1
 ---
@@ -72,3 +78,36 @@ jets, detajj, and the di-jet mass, massjj.
 
 (2) SUSY example
 ----------------
+In this example, we consider gluino pair production at 13 TeV. The gluinos (of
+mass 1355 GeV) decay exclusively to a light top squark (of mass 409 GeV) and a
+top quark (of mass 173.2 GeV). The top squark then decays to a W boson and b
+quark and a (lightest) neutralino (of mass 252 GeV). (The top squark cannot
+decay to a top quark because the mass difference
+
+mass(top squark) - mass(neutralino) < mass(top)).
+
+This decay sequence leads to multiple jets and multiple b jets. There is also
+a high probability to have final states with boosted W bosons due to the
+boosted top quark produced in the gluino decay. 
+
+In order to exploit these event characteristics, we explore three optimizations
+denoted SO1, SO2, and SO3. As in the Higgs example, each is run in two steps
+by executing the Python programs train.py and analysis.py.
+
+SO1
+---
+This optimization finds the best 20-step staircase cut for events that
+satisfy the criteria (njet >= 3) && (j1pT > 200) && (nb >= 1) && (nW >= 1),
+where njet, j1pT, nb, nW, are the number of jets, leading jet pT, number of
+b-jets, and the number of boosted W bosons, respectively.
+
+SO2
+---
+This is the same as SO1, but in addition we optimize one-sided cuts on njet,
+j1pT, nb, and nW.
+
+SO3
+---
+This is the same as SO2, except that the events used in the optimization
+satisy (njet >= 3), with no "preselection" on j1pT, nb, and nW.
+
