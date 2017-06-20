@@ -43,7 +43,7 @@ const int rPYTHONERROR =-7;
 
 /** These codes define the available types of cuts.
  */ 
-enum CUTCODE {GT, LT, ABSGT, ABSLT, EQ, TWOSIDED, STAIRCASE, END};
+enum CUTCODE {GT, LT, GE, LE, ABSGT, ABSLT, EQ, TWOSIDED, STAIRCASE, END};
 
 /** Read either a text file or a ROOT ntuple file that contains variable names and values.
     The text file should contain a header of variable names followed by rows of values.

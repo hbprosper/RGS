@@ -64,7 +64,7 @@ def main():
     # ---------------------------------------------------------------------
     cutdatafilename = sigfilename
     start      = 0           # start row 
-    maxcuts    = -1 #30000       # maximum number of cut-points to consider
+    maxcuts    = -1 #30000   # maximum number of cut-points to consider
     treename   = "RGSinput"  # name of Root tree 
     weightname = "weight"    # name of event weight variable
 
@@ -99,7 +99,7 @@ def main():
 
     print "ttbar yield: %10.2f +/- %-10.2f" % (rgs.total(0), rgs.etotal(0))
     print "SUSY  yield: %10.2f +/- %-10.2f" % (rgs.total(1), rgs.etotal(1))
-    sys.exit()
+
     # ---------------------------------------------------------------------	
     #  Run RGS and write out results
     # ---------------------------------------------------------------------	    

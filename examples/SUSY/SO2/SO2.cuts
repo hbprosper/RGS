@@ -1,9 +1,9 @@
-# ladder cuts
+# mixture of cut types
 \staircase 20
-MR		>
-R2		>
+MR	>
+R2	>
 \end
-njet >=
-nb >=
-nW >=
-j1pT >
+njet	>=
+nb	>=
+nW	>=
+j1pT	>

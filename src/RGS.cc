@@ -18,6 +18,7 @@
 //           02-Jun-2016 HBP - add option overall weighting of events
 //           19-Feb-2017 HBP - add histogram with counts (from 30,000 feet!)
 //           17-Jun-2017 HBP - rename ladder to staircase, box to twosided
+//           20-Jun-2017 HBP - include Sezen's additions (GE, LE)
 //----------------------------------------------------------------------------
 #include <stdio.h>
 #include <cmath>
@@ -521,12 +522,14 @@ void RGS::run(string varfilename, // variables file name
   // A cut-point is and AND of cuts
   //
   // Cut directions/types
-  //    >    0 
-  //    <    1
-  //    >|   2
-  //    <|   3
-  //    ==   4
-  //    <>   5
+  //    >
+  //    <
+  //    >=
+  //    <=
+  //    >|
+  //    <|
+  //    ==
+  //    <>
   //
   // Syntax of variables file:
   //
@@ -663,6 +666,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	cutvar[i].substr(0, 2) == "\\e" ||
 	cutvar[i].substr(0, 2) == "\\E";
 
+      // NB: the order of decoding is important! 
       // Check for the start of a staircase cut      
       if ( startOfStaircase )
         {
@@ -700,6 +704,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
         {
           if   ( inString(cutdir[i],"|") )
             code = ABSGT;
+          else if   ( inString(cutdir[i],"=") )
+            code = GE;
           else
             code = GT;
         }
@@ -707,6 +713,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
         {
           if   ( inString(cutdir[i],"|") )
             code = ABSLT;
+          else if   ( inString(cutdir[i],"=") )
+            code = LE;
           else
             code = LT;
         }
@@ -911,6 +919,8 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
                         {
                         case GT:
                         case LT:
+			case GE:
+			case LE:
                         case ABSGT:
                         case ABSLT:
                         case EQ:
@@ -939,7 +949,15 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
                     case LT:
                       passed = x < xcut;
                       break;
+
+                    case GE:
+                      passed = x >= xcut;
+                      break;
                       
+                    case LE:
+                      passed = x <= xcut;
+                      break;
+		      
                     case ABSGT:
                       passed = abs(x) > abs(xcut);
                       break;
@@ -1489,6 +1507,8 @@ RGS::_saveToNtupleFile(string resultfilename)
         {
         case GT:
         case LT:
+	case GE:
+	case LE:
         case ABSGT:
         case ABSLT:
         case EQ:
@@ -1573,6 +1593,8 @@ RGS::_saveToNtupleFile(string resultfilename)
             {
             case GT:
             case LT:
+	    case GE:
+	    case LE:
             case ABSGT:
             case ABSLT:
             case EQ:

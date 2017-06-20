@@ -64,7 +64,7 @@ def main():
     # ---------------------------------------------------------------------
     cutdatafilename = sigfilename
     start      = 0           # start row 
-    maxcuts    = 30000       # maximum number of cut-points to consider
+    maxcuts    = -1 #30000       # maximum number of cut-points to consider
     treename   = "RGSinput"  # name of Root tree 
     weightname = "weight"    # name of event weight variable
 
