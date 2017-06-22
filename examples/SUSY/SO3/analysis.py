@@ -17,13 +17,10 @@ from ROOT import *
 sys.path.append('../../python')
 from rgsexamples import *
 # ---------------------------------------------------------------------
-NAME = 'SO2'
+NAME = 'SO3'
 def cut(event):
     skip = \
-      (event.njet <     3) or \
-      (event.j1pT <=  200) or \
-      (event.nb   <     1) or \
-      (event.nW   <     1)
+      (event.njet <     3)
     return skip
 # ---------------------------------------------------------------------
 def main():
@@ -56,7 +53,7 @@ def main():
     # python directory).
     setStyle()
 
-    cmass, hs, hb = fill_MR_R2(cut, 'SO2')
+    cmass, hs, hb = fill_MR_R2(cut, 'SO3')
     
     # Create a 2-D histogram for ROC plot
     msize = 0.30  # marker size for points in ROC plot

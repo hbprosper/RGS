@@ -353,7 +353,7 @@ def writeSUSYResults(filename, varfilename, ntuple, variables,
     for name, cdir in cutdirs[2:]:    
         var = ntuple(name)
         bestcuts[name] = var
-        print name, var
+        #print name, var
         if type(var) == type(0.0):
             rec = '%3s %6.2f' % (cutdir[name], var)
             record = "\t%-10s\t%10s" % (name, rec)
