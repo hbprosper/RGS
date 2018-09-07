@@ -67,6 +67,7 @@ def main():
     maxcuts    = -1 #30000   # maximum number of cut-points to consider
     treename   = "RGSinput"  # name of Root tree 
     weightname = "weight"    # name of event weight variable
+
     # One can add an optional selection, which, if true, keeps the event.
     selection  = "(njet >= 3) && (j1pT > 200) && (nb >= 1) && (nW >= 1)"
 
