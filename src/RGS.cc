@@ -125,7 +125,8 @@ bool slurpTable(string filename,
 		double  fileweight,		
 		double& tot,
 		double& err,
-		int&    weightindex)		
+		int&    weightindex,
+		double additionalWeight)		
 {
   cout << "\t" << filename << endl;
   header.clear();
@@ -256,7 +257,7 @@ bool slurpTable(string filename,
 	  data.push_back(dbuffer);
 	  
 	  double w = fileweight;
-	  if ( weightindex > -1 ) w *= dbuffer[weightindex];
+	  if ( weightindex > -1 ) w *= additionalWeight * dbuffer[weightindex];
 
 	  tot += w;
 	  err += w * w;
@@ -352,11 +353,13 @@ RGS::RGS()
 RGS::RGS(vstring& cutdatafilenames, int start, int numrows, 
 	 string treename,
 	 string weightname,
-	 string selection)
+	 string selection,
+	 float additionalWeight )
   : _status(0),
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
+    _additionalWeight(additionalWeight),
     _weightindex(vector<int>()),
     _weight(vector<double>()),
     _totals(vector<double>()),
@@ -379,15 +382,17 @@ RGS::RGS(vstring& cutdatafilenames, int start, int numrows,
 RGS::RGS(string cutdatafilename, int start, int numrows, 
 	 string treename,
 	 string weightname,
-	 string selection)
+	 string selection,
+	 float additionalWeight )
   : _status(0),
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
+    _additionalWeight(additionalWeight),
     _weightindex(vector<int>()),
     _weight(vector<double>()),    
     _totals(vector<double>()),
-    _errors(vector<double>())    
+    _errors(vector<double>()) 
 {
   vstring cutdatafilenames(1, cutdatafilename);
   _init(cutdatafilenames, start, numrows, _treename, _selection);
@@ -459,7 +464,8 @@ RGS::add(string searchfilename,
 		    _weight.back(),
 		    _totals.back(),
 		    _errors.back(),
-		    _weightindex.back()) )
+		    _weightindex.back(),
+		    _additionalWeight) )
     error("RGS: unable to read file " + searchfilename);
 
   cout << "\tSearch data will be identified with " << resultname << " in the RGS results file." << endl;
@@ -505,7 +511,8 @@ RGS::add(vector<string>& searchfilenames,
 			_weight.back(),
 			_totals.back(),
 			_errors.back(),
-			_weightindex.back()) )
+			_weightindex.back(),
+			_additionalWeight ) )
           error("RGS: unable to read file " + searchfilenames[ifile]);
     }
 }
@@ -995,7 +1002,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
               // of current cut-point
 	      
 	      double weight = _weight[file];
-              if ( useEventWeight ) weight = weight * sdata[row][weightindex];
+              if ( useEventWeight ) weight = weight * _additionalWeight * sdata[row][weightindex];
               
               // if ( cutpoint == 0 )
 	      // 	{
@@ -1003,7 +1010,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	      // 	  _errors[file] += weight*weight;
 	      // 	}
           
-              if ( passed ) _counts[file][cutpoint] += weight;
+              if ( passed ) _counts[file][cutpoint] +=  weight;
 
 #ifdef RGSDEBUG
               if ( DEBUG > 2 )
