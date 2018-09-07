@@ -61,7 +61,8 @@ bool slurpTable(std::string filename,
 		double  fileweight=1,
 		double& tot=dNULL,
 		double& err=dNULL,
-		int&    weightindex=iNEG1);
+		int&    weightindex=iNEG1,
+		double additionalWeight = 1.0 );
 
 /** Return version number of RGS.
  */

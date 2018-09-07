@@ -125,7 +125,8 @@ bool slurpTable(string filename,
 		double  fileweight,		
 		double& tot,
 		double& err,
-		int&    weightindex)		
+		int&    weightindex,
+		double additionalWeight)		
 {
   cout << "\t" << filename << endl;
   header.clear();
@@ -256,7 +257,7 @@ bool slurpTable(string filename,
 	  data.push_back(dbuffer);
 	  
 	  double w = fileweight;
-	  if ( weightindex > -1 ) w *= dbuffer[weightindex];
+	  if ( weightindex > -1 ) w *= additionalWeight * dbuffer[weightindex];
 
 	  tot += w;
 	  err += w * w;
@@ -463,7 +464,8 @@ RGS::add(string searchfilename,
 		    _weight.back(),
 		    _totals.back(),
 		    _errors.back(),
-		    _weightindex.back()) )
+		    _weightindex.back(),
+		    _additionalWeight) )
     error("RGS: unable to read file " + searchfilename);
 
   cout << "\tSearch data will be identified with " << resultname << " in the RGS results file." << endl;
@@ -509,7 +511,8 @@ RGS::add(vector<string>& searchfilenames,
 			_weight.back(),
 			_totals.back(),
 			_errors.back(),
-			_weightindex.back()) )
+			_weightindex.back(),
+			_additionalWeight ) )
           error("RGS: unable to read file " + searchfilenames[ifile]);
     }
 }
