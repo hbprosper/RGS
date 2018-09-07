@@ -79,14 +79,16 @@ public:
   RGS(std::string cutdatafilename, int start=0, int numrows=0, 
       std::string treename="",
       std::string weightname="",
-      std::string selection="");
+      std::string selection="",
+      float additionalWeight = 1.0);
 
   /**
    */
   RGS(std::vector<std::string>& cutdatafilename, int start=0, int numrows=0,
       std::string treename="",
       std::string weightname="",
-      std::string selection="");
+      std::string selection="",
+      float additionalWeight = 1.0);
 
   virtual ~RGS();
 
@@ -160,6 +162,7 @@ private:
   std::string _treename;
   std::string _weightname;
   std::string _selection;
+  float _additionalWeight;
   
   vstring                   _searchname;
   std::vector< vvdouble >   _searchdata;

@@ -352,11 +352,13 @@ RGS::RGS()
 RGS::RGS(vstring& cutdatafilenames, int start, int numrows, 
 	 string treename,
 	 string weightname,
-	 string selection)
+	 string selection,
+	 float additionalWeight )
   : _status(0),
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
+    _additionalWeight(additionalWeight),
     _weightindex(vector<int>()),
     _weight(vector<double>()),
     _totals(vector<double>()),
@@ -379,15 +381,17 @@ RGS::RGS(vstring& cutdatafilenames, int start, int numrows,
 RGS::RGS(string cutdatafilename, int start, int numrows, 
 	 string treename,
 	 string weightname,
-	 string selection)
+	 string selection,
+	 float additionalWeight )
   : _status(0),
     _treename(treename),
     _weightname(weightname),
     _selection(selection),
+    _additionalWeight(additionalWeight),
     _weightindex(vector<int>()),
     _weight(vector<double>()),    
     _totals(vector<double>()),
-    _errors(vector<double>())    
+    _errors(vector<double>()) 
 {
   vstring cutdatafilenames(1, cutdatafilename);
   _init(cutdatafilenames, start, numrows, _treename, _selection);
@@ -995,7 +999,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
               // of current cut-point
 	      
 	      double weight = _weight[file];
-              if ( useEventWeight ) weight = weight * sdata[row][weightindex];
+              if ( useEventWeight ) weight = weight * _additionalWeight * sdata[row][weightindex];
               
               // if ( cutpoint == 0 )
 	      // 	{
@@ -1003,7 +1007,7 @@ void RGS::run(vstring&  cutvar,        // Variables defining cuts
 	      // 	  _errors[file] += weight*weight;
 	      // 	}
           
-              if ( passed ) _counts[file][cutpoint] += weight;
+              if ( passed ) _counts[file][cutpoint] +=  weight;
 
 #ifdef RGSDEBUG
               if ( DEBUG > 2 )
